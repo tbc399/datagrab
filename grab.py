@@ -14,9 +14,9 @@ This is the driver for datagrab
 import requests
 import os
 import sys
-import symbol
+import symbols
 
 
 if __name__ == '__main__':
     print 'booty!'
-    symbol.run()
+    symbols.run()

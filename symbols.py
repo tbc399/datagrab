@@ -15,6 +15,21 @@ import requests
 from config import *
 
 
+MORNINGSTAR_SECTOR_CODES = {
+    101: 'Basic Materials',
+    102: 'Consumer Cyclical',
+    103: 'Financial Services',
+    104: 'Real Estate',
+    205: 'Consumer Defensive',
+    206: 'Healthcare',
+    207: 'Utilities',
+    308: 'Communication Services',
+    309: 'Energy',
+    310: 'Industrials',
+    311: 'Technology',
+}
+
+
 def _get_symbols(character):
     """Grabs stock symbols by character
     

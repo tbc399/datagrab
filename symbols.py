@@ -115,13 +115,17 @@ def _split_into_sector(symbol_lists):
         company_infos = json.loads(response.text)
 
         for entry in company_infos:
+
             symbol = entry['request']
-            print "getting sector of {}".format(symbol)
+
             try:
                 sector_code = entry['results'][0]['tables'][
                     'asset_classification']['morningstar_sector_code']
             except TypeError:
-                print "could not get sector of {} with json: {}".format(symbol, json.dumps(entry, indent=2))
+                print "WARNING: no sector info on {sym}. Skipping".format(
+                    sym=symbol
+                )
+                continue
 
             if sector_code in sector_mapping:
                 sector_mapping[sector_code]['symbols'].append(symbol)
@@ -143,16 +147,18 @@ def _split_into_sector(symbol_lists):
 
 
 def run():
-    """Main driver for symbols
+    """Entry point for symbols
     
     TODO
     """
 
     symbol_lists = [[]]
     index = 0
+
     for char in "A":#BCDEFGHIJKLMNOPQRSTUVWXYZ":
-        print "grabbing symbols for {char}".format(char=char)
+
         for symbol in _get_symbols(char):
+
             if len(symbol_lists[index]) <= QUERY_SYMBOL_COUNT:
                 symbol_lists[index].append(symbol)
             else:

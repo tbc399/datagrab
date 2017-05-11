@@ -169,3 +169,5 @@ def run():
 
     with open(SECTOR_MAPPING_FILE, 'w') as f:
         json.dump(sector_mapping, f)
+
+    return True

@@ -18,4 +18,7 @@ import symbols
 
 
 if __name__ == '__main__':
-    symbols.run()
+    try:
+        symbols.run()
+    except requests.ConnectionError:
+        print "could not connect to the interwebs"

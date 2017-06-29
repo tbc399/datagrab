@@ -118,6 +118,11 @@ def _split_into_sector(symbol_lists):
 
             symbol = entry['request']
 
+            if "error" in entry:
+                print "WARNING: Tradier error in getting symbol " \
+                      "{sym}: {msg}".format(sym=symbol, msg=entry["error"])
+                continue
+
             try:
                 sector_code = entry['results'][0]['tables'][
                     'asset_classification']['morningstar_sector_code']
@@ -125,6 +130,7 @@ def _split_into_sector(symbol_lists):
                 print "WARNING: no sector info on {sym}. Skipping".format(
                     sym=symbol
                 )
+                print json.dumps(entry, indent=2)
                 continue
 
             if sector_code in sector_mapping:
@@ -168,6 +174,6 @@ def run():
     sector_mapping = _split_into_sector(symbol_lists)
 
     with open(SECTOR_MAPPING_FILE, 'w') as f:
-        json.dump(sector_mapping, f)
+        json.dump(sector_mapping, f, indent=2)
 
     return True

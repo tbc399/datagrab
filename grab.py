@@ -15,10 +15,13 @@ import requests
 import os
 import sys
 import symbols
+import price
 
 
 if __name__ == '__main__':
+
     try:
-        symbols.run()
+        #symbols.run()
+        price.run()
     except requests.ConnectionError:
         print "could not connect to the interwebs"

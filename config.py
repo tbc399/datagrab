@@ -15,3 +15,5 @@ TRADIER_BETA_VERSION = "beta"
 TRADIER_BEARER_TOKEN = "ey39F8VMeFvhNsq4vavzeQXThcpL"
 QUERY_SYMBOL_COUNT = 20
 SECTOR_MAPPING_FILE = "sectored.json"
+DATA_DOWNLOAD_DIR = "home/travis/sonicred/TrainingData"
+DATA_RANGE = 730

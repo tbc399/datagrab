@@ -130,6 +130,9 @@ def _split_into_sector(symbol_lists):
                 print "WARNING: no sector info on {sym}. Skipping".format(
                     sym=symbol
                 )
+                continue
+            except KeyError as error:
+                print "WARNING: could not get a json field '{}'".format(error)
                 print json.dumps(entry, indent=2)
                 continue
 
@@ -161,7 +164,7 @@ def run():
     symbol_lists = [[]]
     index = 0
 
-    for char in "A":#BCDEFGHIJKLMNOPQRSTUVWXYZ":
+    for char in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
 
         for symbol in _get_symbols(char):
 
@@ -173,7 +176,7 @@ def run():
 
     sector_mapping = _split_into_sector(symbol_lists)
 
-    with open(SECTOR_MAPPING_FILE, 'w') as f:
+    with open(os.path.join(DATA_DOWNLOAD_DIR, SECTOR_MAPPING_FILE), 'w') as f:
         json.dump(sector_mapping, f, indent=2)
 
     return True

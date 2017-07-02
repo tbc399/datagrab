@@ -11,9 +11,11 @@ other modules
 
 import os
 import json
+from datetime import date, timedelta
+from config import *
 
 
-def __write_out_symbol_data(symbol, data, sector_dir, description=""):
+def write_out_symbol_data(symbol, data, sector_dir, description=""):
     """Write symbol prices to JSON file
 
     TODO
@@ -37,7 +39,7 @@ def __write_out_symbol_data(symbol, data, sector_dir, description=""):
         json.dump(data, f, indent=2)
 
 
-def __write_out_dependent_data(name, symbol, data, sector_dir, description=""):
+def write_out_dependent_data(name, symbol, data, sector_dir, description=""):
     """Write symbol dependent data to JSON
 
     TODO
@@ -64,3 +66,26 @@ def __write_out_dependent_data(name, symbol, data, sector_dir, description=""):
     with open(file_name, 'w') as f:
         json.dump(data, f, indent=2)
 
+
+def get_dates(range):
+    """Return master dates list
+    
+    TODO
+    """
+
+    yesterday = date.today() - timedelta(days=1)
+    start_date = yesterday - timedelta(days=DATA_RANGE)
+
+    dates_list = []
+
+    current_date = yesterday
+    while current_date >= start_date:
+
+        if current_date.weekday() < 5:  # a weekday
+            dates_list.append(current_date)
+
+        current_date -= timedelta(days=1)
+
+    dates_list.reverse()
+
+    return dates_list

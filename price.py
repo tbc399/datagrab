@@ -11,9 +11,9 @@ given set of symbols.
 
 
 import requests
-import json
 import os
-from datetime import date, datetime, timedelta
+from utils import *
+from datetime import date, timedelta
 from config import *
 
 
@@ -38,15 +38,15 @@ def __get_formatted_date_range():
     return start_date_string, end_date_string
 
 
-def __download_symbol_price_and_volume(symbol, sector_dir):
-    """Download a single symbol's closing price
+def __download_symbol_price_and_volume(symbol, dates_list, sector_dir):
+    """Download a single symbol's closing price and volume
 
     TODO
     """
 
     print "Downloading price and volume for {sym}".format(sym=symbol)
 
-    start_date, end_date = __get_formatted_date_range()
+    start_date = dates_list
 
     uri = "https://{host}/{version}/markets/history".format(
         host=TRADIER_API_DOMAIN,
@@ -90,13 +90,13 @@ def __download_symbol_price_and_volume(symbol, sector_dir):
         json_response["history"]["day"]
     ]
 
-    __write_out_symbol_data(
+    write_out_symbol_data(
         symbol,
         price,
         sector_dir,
         description="The closing price"
     )
-    __write_out_dependent_data(
+    write_out_dependent_data(
         "Volume",
         symbol,
         volume,
@@ -105,7 +105,7 @@ def __download_symbol_price_and_volume(symbol, sector_dir):
     )
 
 
-def run():
+def run(dates_list):
     """Entry point for price
 
     TODO
@@ -127,4 +127,4 @@ def run():
 
         for symbol in sector_details["symbols"]:
 
-            __download_symbol_price_and_volume(symbol, sector_dir)
+            __download_symbol_price_and_volume(symbol, dates_list, sector_dir)

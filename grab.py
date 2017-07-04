@@ -26,6 +26,6 @@ if __name__ == '__main__':
 
     try:
         symbols.run()
-        price.run(master_dates_list)
+        price.run(master_dates_list, 10)
     except requests.ConnectionError:
         print "could not connect to the interwebs"

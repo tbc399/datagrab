@@ -76,13 +76,45 @@ def get_dates(range):
     yesterday = date.today() - timedelta(days=1)
     start_date = yesterday - timedelta(days=DATA_RANGE)
 
+    return get_weekdays_in_range(start_date, yesterday)
+
+
+def get_weekdays_in_range(start, end):
+    """Generate list of weekdays
+    
+    TODO
+    """
+
     dates_list = []
 
-    current_date = yesterday
-    while current_date >= start_date:
+    current_date = end
+    while current_date >= start:
 
         if current_date.weekday() < 5:  # a weekday
             dates_list.append(current_date)
+
+        current_date -= timedelta(days=1)
+
+    dates_list.reverse()
+
+    return dates_list
+
+
+def get_number_of_weekdays(start, number_of_days):
+    """Gets a set number of weekdays
+    
+    TODO
+    """
+
+    dates_list = []
+    days_count = 0
+
+    current_date = start
+    while days_count < number_of_days:
+
+        if current_date.weekday() < 5:  # a weekday
+            dates_list.append(current_date)
+            days_count += 1
 
         current_date -= timedelta(days=1)
 

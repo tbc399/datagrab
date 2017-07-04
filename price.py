@@ -23,22 +23,7 @@ HEADERS = {
 }
 
 
-def __get_formatted_date_range():
-    """Return data date range
-    
-    TODO
-    """
-
-    end_date = date.today() - timedelta(days=1)
-    start_date = end_date - timedelta(days=DATA_RANGE)
-
-    end_date_string = end_date.strftime("%Y-%m-%d")
-    start_date_string = start_date.strftime("%Y-%m-%d")
-
-    return start_date_string, end_date_string
-
-
-def __download_symbol_price_and_volume(symbol, dates_list, sector_dir):
+def __download_symbol_price_and_volume(symbol, dates_list, sector_dir, lag):
     """Download a single symbol's closing price and volume
 
     TODO
@@ -46,7 +31,12 @@ def __download_symbol_price_and_volume(symbol, dates_list, sector_dir):
 
     print "Downloading price and volume for {sym}".format(sym=symbol)
 
-    start_date = dates_list
+    start_date = dates_list[0].strftime("%Y-%m-%d")
+    end_date = dates_list[-1].strftime("%Y-%m-%d")
+
+    extended_dates_list = get_number_of_weekdays(
+        start_date - timedelta(days=1), lag
+    ).extend(list(dates_list))
 
     uri = "https://{host}/{version}/markets/history".format(
         host=TRADIER_API_DOMAIN,
@@ -105,7 +95,7 @@ def __download_symbol_price_and_volume(symbol, dates_list, sector_dir):
     )
 
 
-def run(dates_list):
+def run(dates_list, lag):
     """Entry point for price
 
     TODO
@@ -127,4 +117,9 @@ def run(dates_list):
 
         for symbol in sector_details["symbols"]:
 
-            __download_symbol_price_and_volume(symbol, dates_list, sector_dir)
+            __download_symbol_price_and_volume(
+                symbol,
+                dates_list,
+                sector_dir,
+                lag
+            )

@@ -95,6 +95,15 @@ def __download_symbol_price_and_volume(symbol, dates_list, sector_dir, lag):
     )
 
 
+def validate_data(dates_list, data):
+    """Match Data dates to given dates
+
+    TODO
+    """
+
+    
+
+
 def run(dates_list, lag):
     """Entry point for price
 

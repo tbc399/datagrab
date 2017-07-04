@@ -112,7 +112,7 @@ def _split_into_sector(symbol_lists):
                 )
             )
 
-        company_infos = json.loads(response.text)
+        company_infos = response.json()
 
         for entry in company_infos:
 
@@ -164,7 +164,7 @@ def run():
     symbol_lists = [[]]
     index = 0
 
-    for char in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+    for char in "X":#"ABCDEFGHIJKLMNOPQRSTUVWXYZ":
 
         for symbol in _get_symbols(char):
 

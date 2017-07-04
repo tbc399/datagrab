@@ -22,7 +22,13 @@ import price
 
 if __name__ == '__main__':
 
-    master_dates_list = get_dates(DATA_RANGE)
+    yesterday = date.today() - timedelta(days=1)
+    try:
+        print "Gathering valid market open dates..."
+        master_dates_list = get_valid_market_dates(yesterday, DATA_RANGE)
+    except requests.ConnectionError:
+        print "could not connect to the interwebs"
+        exit(-1)
 
     try:
         symbols.run()

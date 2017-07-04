@@ -13,6 +13,13 @@ import os
 import json
 from datetime import date, timedelta
 from config import *
+import requests
+
+
+HEADERS = {
+    "Authorization": "Bearer {}".format(TRADIER_BEARER_TOKEN),
+    "Accept": "application/json"
+}
 
 
 def write_out_symbol_data(symbol, data, sector_dir, description=""):
@@ -21,22 +28,20 @@ def write_out_symbol_data(symbol, data, sector_dir, description=""):
     TODO
     """
 
-    data_values = [item["value"] for item in data]
-
-    data = {
+    json_data = {
         "name": symbol,
         "description": description,
         "interval_type": "DAY",
         "interval": 1,
-        "minimum": min(data_values),
-        "maximum": max(data_values),
+        "minimum": min(data),
+        "maximum": max(data),
         "data": data
     }
 
     file_name = os.path.join(sector_dir, "{name}.sym.json".format(name=symbol))
 
     with open(file_name, 'w') as f:
-        json.dump(data, f, indent=2)
+        json.dump(json_data, f, indent=2)
 
 
 def write_out_dependent_data(name, symbol, data, sector_dir, description=""):
@@ -45,16 +50,14 @@ def write_out_dependent_data(name, symbol, data, sector_dir, description=""):
     TODO
     """
 
-    data_values = [item["value"] for item in data]
-
-    data = {
+    json_data = {
         "name": name,
         "description": description,
         "interval_type": "DAY",
         "interval": 1,
         "symbol_dependency": symbol,
-        "minimum": min(data_values),
-        "maximum": max(data_values),
+        "minimum": min(data),
+        "maximum": max(data),
         "data": data
     }
 
@@ -64,19 +67,74 @@ def write_out_dependent_data(name, symbol, data, sector_dir, description=""):
     )
 
     with open(file_name, 'w') as f:
-        json.dump(data, f, indent=2)
+        json.dump(json_data, f, indent=2)
 
 
-def get_dates(range):
+def __month_year_iter(end_month, end_year):
+    """Helper for year/month iteration
+
+    TODO
+    """
+
+    ym_end = 12*end_year + end_month - 1
+
+    for ym in range(ym_end, -1, -1):
+        y, m = divmod(ym, 12)
+        yield y, m+1
+
+
+def get_valid_market_dates(end_date, num_dates):
     """Return master dates list
     
     TODO
     """
 
-    yesterday = date.today() - timedelta(days=1)
-    start_date = yesterday - timedelta(days=DATA_RANGE)
+    end_year = end_date.year
+    end_month = end_date.month
 
-    return get_weekdays_in_range(start_date, yesterday)
+    market_open_dates = []
+
+    for year, month in __month_year_iter(end_month, end_year):
+
+        uri = "https://{host}/{version}/markets/calendar".format(
+            host=TRADIER_API_DOMAIN,
+            version=TRADIER_API_VERSION
+        )
+        query = "year={year}&month={month}".format(
+            year=year,
+            month=month,
+        )
+        url = "{uri}?{query}".format(
+            uri=uri,
+            query=query
+        )
+
+        response = requests.get(url, headers=HEADERS)
+
+        if response.status_code != 200:
+            raise IOError(
+                "there was a network problem getting "
+                "the market calendar on {}/{}".format(month, year)
+            )
+
+        j = response.json()
+
+        for entry in reversed(j["calendar"]["days"]["day"]):
+
+            year, month, day = entry["date"].split('-')
+            d = date(int(year), int(month), int(day))
+
+            if d <= end_date and entry["status"] == "open":
+                market_open_dates.append(d)
+            elif entry["status"] == "holiday":
+                print json.dumps(entry, indent=2)
+
+        if len(market_open_dates) > num_dates:
+            market_open_dates = market_open_dates[:num_dates]
+            market_open_dates.reverse()
+            return market_open_dates
+        elif len(market_open_dates) == num_dates:
+            return market_open_dates.reverse()
 
 
 def get_weekdays_in_range(start, end):

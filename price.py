@@ -23,6 +23,9 @@ HEADERS = {
 }
 
 
+__extended_dates_list = None
+
+
 def __download_symbol_price_and_volume(symbol, dates_list, sector_dir, lag):
     """Download a single symbol's closing price and volume
 
@@ -31,12 +34,18 @@ def __download_symbol_price_and_volume(symbol, dates_list, sector_dir, lag):
 
     print "Downloading price and volume for {sym}".format(sym=symbol)
 
-    start_date = dates_list[0].strftime("%Y-%m-%d")
-    end_date = dates_list[-1].strftime("%Y-%m-%d")
+    global __extended_dates_list
 
-    extended_dates_list = get_number_of_weekdays(
-        start_date - timedelta(days=1), lag
-    ).extend(list(dates_list))
+    if not __extended_dates_list:
+        __extended_dates_list = get_valid_market_dates(
+            dates_list[0] - timedelta(days=1), lag
+        )
+        __extended_dates_list.extend(list(dates_list))
+
+    start_date = __extended_dates_list[0].strftime("%Y-%m-%d")
+    end_date = __extended_dates_list[-1].strftime("%Y-%m-%d")
+
+    print start_date, end_date
 
     uri = "https://{host}/{version}/markets/history".format(
         host=TRADIER_API_DOMAIN,
@@ -60,7 +69,7 @@ def __download_symbol_price_and_volume(symbol, dates_list, sector_dir, lag):
             "the historical pricing from symbol {sym}".format(sym=symbol)
         )
 
-    json_response = json.loads(response.text)
+    json_response = response.json()
 
     if not json_response:
         print "WARNING: could not download data for symbol {}".format(symbol)
@@ -70,22 +79,33 @@ def __download_symbol_price_and_volume(symbol, dates_list, sector_dir, lag):
         )
         return
 
-    price = [
-        {"date": day["date"], "value": day["close"]} for day in
-        json_response["history"]["day"]
-    ]
+    returned_data = json_response["history"]["day"]
 
-    volume = [
-        {"date": day["date"], "value": day["volume"]} for day in
-        json_response["history"]["day"]
-    ]
+    for i in xrange(len(__extended_dates_list)):
+        print returned_data[i]["date"], __extended_dates_list[i]
 
-    write_out_symbol_data(
-        symbol,
-        price,
-        sector_dir,
-        description="The closing price"
-    )
+    if len(returned_data) != len(__extended_dates_list):
+        print len(returned_data), len(__extended_dates_list)
+        print "WARNING: not enough data for {}. Skipping".format(symbol)
+        return
+
+    validate_historical_data(__extended_dates_list, returned_data)
+
+    extended_prices = [day["close"] for day in returned_data]
+
+    for i in xrange(lag):
+
+        price = extended_prices[lag - i:DATA_RANGE + lag - i]
+
+        write_out_symbol_data(
+            "{}_{}".format(symbol, i),
+            price,
+            sector_dir,
+            description="The closing price lagging by {} day(s)".format(i)
+        )
+
+    volume = [day["volume"] for day in returned_data[lag:DATA_RANGE + lag]]
+
     write_out_dependent_data(
         "Volume",
         symbol,
@@ -95,13 +115,11 @@ def __download_symbol_price_and_volume(symbol, dates_list, sector_dir, lag):
     )
 
 
-def validate_data(dates_list, data):
-    """Match Data dates to given dates
+def validate_historical_data(dates_list, returned_data):
+    """TODO"""
 
-    TODO
-    """
-
-    
+    for i in xrange(len(dates_list)):
+        assert dates_list[i].strftime("%Y-%m-%d") == returned_data[i]["date"]
 
 
 def run(dates_list, lag):

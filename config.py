@@ -17,7 +17,7 @@ TRADIER_BEARER_TOKEN = "ey39F8VMeFvhNsq4vavzeQXThcpL"
 QUERY_SYMBOL_COUNT = 20
 SECTOR_MAPPING_FILE = "sectored.json"
 DATA_DOWNLOAD_DIR = os.path.join(os.environ["HOME"], "sonicred/TrainingData")
-DATA_RANGE = 730
+DATA_RANGE = 500
 
 
 def validate_configuration():

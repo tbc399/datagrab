@@ -81,17 +81,9 @@ def __download_symbol_price_and_volume(symbol, dates_list, sector_dir, lag):
 
     returned_data = json_response["history"]["day"]
 
-    for i in xrange(len(__extended_dates_list)):
-        print returned_data[i]["date"], __extended_dates_list[i]
+    complete_data = fill_in_missing_data(__extended_dates_list, returned_data)
 
-    if len(returned_data) != len(__extended_dates_list):
-        print len(returned_data), len(__extended_dates_list)
-        print "WARNING: not enough data for {}. Skipping".format(symbol)
-        return
-
-    validate_historical_data(__extended_dates_list, returned_data)
-
-    extended_prices = [day["close"] for day in returned_data]
+    extended_prices = [day["close"] for day in complete_data]
 
     for i in xrange(lag):
 
@@ -104,7 +96,7 @@ def __download_symbol_price_and_volume(symbol, dates_list, sector_dir, lag):
             description="The closing price lagging by {} day(s)".format(i)
         )
 
-    volume = [day["volume"] for day in returned_data[lag:DATA_RANGE + lag]]
+    volume = [day["volume"] for day in complete_data[lag:DATA_RANGE + lag]]
 
     write_out_dependent_data(
         "Volume",
@@ -115,11 +107,22 @@ def __download_symbol_price_and_volume(symbol, dates_list, sector_dir, lag):
     )
 
 
-def validate_historical_data(dates_list, returned_data):
+def fill_in_missing_data(dates_list, incomplete_data):
     """TODO"""
 
-    for i in xrange(len(dates_list)):
-        assert dates_list[i].strftime("%Y-%m-%d") == returned_data[i]["date"]
+    ndx_1 = 0
+    ndx_2 = 0
+    len_1 = len(dates_list)
+    len_2 = len(incomplete_data)
+
+    complete_data = []
+
+    while ndx_1 < len_1 or ndx_2 < len_2:
+
+        if dates_list[ndx_1] == incomplete_data[ndx_2][0]:
+
+        else:
+            ndx_2 += 1
 
 
 def run(dates_list, lag):

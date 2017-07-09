@@ -14,24 +14,24 @@ This is the driver for datagrab
 import requests
 from utils import *
 from config import *
-import os
-import sys
+from datetime import datetime
 import symbols
 import price
 
 
 if __name__ == '__main__':
 
-    yesterday = date.today() - timedelta(days=1)
     try:
-        print "Gathering valid market open dates..."
-        master_dates_list = get_valid_market_dates(yesterday, DATA_RANGE)
-    except requests.ConnectionError:
-        print "could not connect to the interwebs"
-        exit(-1)
 
-    try:
-        symbols.run()
-        price.run(master_dates_list, 10)
+        print "Gathering valid market open dates..."
+        master_dates_list = get_valid_market_dates(
+            datetime.strptime(LAST_DATE, "%Y-%m-%d").date(),
+            DATA_RANGE
+        )
+
+        symbols_list = symbols.run()
+        #symbols_list = ["AUMAW"]
+        price.run(symbols_list, master_dates_list, 10)
+
     except requests.ConnectionError:
         print "could not connect to the interwebs"

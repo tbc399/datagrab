@@ -11,7 +11,7 @@ other modules
 
 import os
 import json
-from datetime import date, timedelta
+from datetime import timedelta, datetime
 from config import *
 import requests
 
@@ -22,7 +22,8 @@ HEADERS = {
 }
 
 
-def write_out_symbol_data(symbol, data, sector_dir, description=""):
+#def write_out_symbol_data(symbol, data, sector_dir, description=""):
+def write_out_symbol_data(symbol, data, description=""):
     """Write symbol prices to JSON file
 
     TODO
@@ -38,13 +39,18 @@ def write_out_symbol_data(symbol, data, sector_dir, description=""):
         "data": data
     }
 
-    file_name = os.path.join(sector_dir, "{name}.sym.json".format(name=symbol))
+    #file_name = os.path.join(sector_dir, "{name}.sym.json".format(name=symbol))
+    file_name = os.path.join(
+        DATA_DOWNLOAD_DIR,
+        "{name}.sym.json".format(name=symbol)
+    )
 
     with open(file_name, 'w') as f:
         json.dump(json_data, f, indent=2)
 
 
-def write_out_dependent_data(name, symbol, data, sector_dir, description=""):
+#def write_out_dependent_data(name, symbol, data, sector_dir, description=""):
+def write_out_dependent_data(name, symbol, data, description=""):
     """Write symbol dependent data to JSON
 
     TODO
@@ -61,8 +67,12 @@ def write_out_dependent_data(name, symbol, data, sector_dir, description=""):
         "data": data
     }
 
+    #file_name = os.path.join(
+    #    sector_dir,
+    #    "{sym}_{name}.dep.json".format(sym=symbol, name=name)
+    #)
     file_name = os.path.join(
-        sector_dir,
+        DATA_DOWNLOAD_DIR,
         "{sym}_{name}.dep.json".format(sym=symbol, name=name)
     )
 
@@ -121,8 +131,7 @@ def get_valid_market_dates(end_date, num_dates):
 
         for entry in reversed(j["calendar"]["days"]["day"]):
 
-            year, month, day = entry["date"].split('-')
-            d = date(int(year), int(month), int(day))
+            d = datetime.strptime(entry["date"], "%Y-%m-%d").date()
 
             if d <= end_date and entry["status"] == "open":
                 market_open_dates.append(d)
@@ -131,10 +140,10 @@ def get_valid_market_dates(end_date, num_dates):
 
         if len(market_open_dates) > num_dates:
             market_open_dates = market_open_dates[:num_dates]
+
+        if len(market_open_dates) == num_dates:
             market_open_dates.reverse()
             return market_open_dates
-        elif len(market_open_dates) == num_dates:
-            return market_open_dates.reverse()
 
 
 def get_weekdays_in_range(start, end):

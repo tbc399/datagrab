@@ -13,7 +13,7 @@ given set of symbols.
 import requests
 import os
 from utils import *
-from datetime import date, timedelta
+from datetime import datetime, timedelta
 from config import *
 
 
@@ -26,7 +26,8 @@ HEADERS = {
 __extended_dates_list = None
 
 
-def __download_symbol_price_and_volume(symbol, dates_list, sector_dir, lag):
+#def __download_symbol_price_and_volume(symbol, dates_list, sector_dir, lag):
+def __download_symbol_price_and_volume(symbol, dates_list, lag):
     """Download a single symbol's closing price and volume
 
     TODO
@@ -44,8 +45,6 @@ def __download_symbol_price_and_volume(symbol, dates_list, sector_dir, lag):
 
     start_date = __extended_dates_list[0].strftime("%Y-%m-%d")
     end_date = __extended_dates_list[-1].strftime("%Y-%m-%d")
-
-    print start_date, end_date
 
     uri = "https://{host}/{version}/markets/history".format(
         host=TRADIER_API_DOMAIN,
@@ -79,35 +78,111 @@ def __download_symbol_price_and_volume(symbol, dates_list, sector_dir, lag):
         )
         return
 
+    if not json_response["history"] or not json_response["history"]["day"]:
+        print "WARNING: no history could be found for symbol {}".format(symbol)
+        return
+
     returned_data = json_response["history"]["day"]
 
-    complete_data = fill_in_missing_data(__extended_dates_list, returned_data)
+    #  format the Tradier price into [date, price] values
+    price_data = [
+        [
+            datetime.strptime(day["date"], "%Y-%m-%d").date(),
+            day["close"]
+        ] for day in returned_data if day["close"] != "NaN"
+    ]
 
-    extended_prices = [day["close"] for day in complete_data]
+    #  fill in any holes in the price data
+    complete_price_data = __fill_in_missing_data(
+        __extended_dates_list,
+        price_data
+    )
 
-    for i in xrange(lag):
+    if not complete_price_data:
+        #  holes in the data are too big, so skip
+        print "WARNING: {} has too many missing data points. skipping".format(
+            symbol
+        )
+        return
 
-        price = extended_prices[lag - i:DATA_RANGE + lag - i]
+    #  write out the base symbol (without any lag)
+    price = complete_price_data[lag:DATA_RANGE + lag]
+    write_out_symbol_data(
+        symbol,
+        price,
+        # sector_dir,
+        description="The closing price"
+    )
 
-        write_out_symbol_data(
-            "{}_{}".format(symbol, i),
+    for i in xrange(1, lag):
+
+        price = complete_price_data[lag - i:DATA_RANGE + lag - i]
+
+        write_out_dependent_data(
+            "Lagging_{}".format(i),
+            symbol,
             price,
-            sector_dir,
+            #sector_dir,
             description="The closing price lagging by {} day(s)".format(i)
         )
 
-    volume = [day["volume"] for day in complete_data[lag:DATA_RANGE + lag]]
+    #  format the volume data into [date, volume] entries
+    volume_data = [
+        [
+            datetime.strptime(day["date"], "%Y-%m-%d").date(),
+            day["volume"]
+        ] for day in returned_data if day["close"] != "NaN"
+    ]
+
+    #  fill in any holes in the volume data
+    complete_volume_data = __fill_in_missing_data(
+        __extended_dates_list,
+        volume_data
+    )
 
     write_out_dependent_data(
         "Volume",
         symbol,
-        volume,
-        sector_dir,
+        complete_volume_data[lag:DATA_RANGE + lag],
+        #sector_dir,
         description="The daily volume"
     )
 
 
-def fill_in_missing_data(dates_list, incomplete_data):
+def __patch_data(start_ndx, end_ndx, data):
+    """TODO"""
+
+    assert start_ndx < end_ndx
+
+    patch_size = end_ndx - start_ndx
+
+    if patch_size > 5:
+
+        #  section is too large to patch
+        return False
+
+    elif start_ndx > 0:
+
+        a = data[start_ndx - 1]
+        b = data[end_ndx]
+
+        increment = (b - a) / float(patch_size)
+
+        for i in xrange(start_ndx, end_ndx):
+
+            data[i] = data[i - 1] + increment
+
+        return True
+
+    else:
+
+        fill_value = data[end_ndx]
+
+        for i in range(end_ndx - 1, -1, -1):
+            data[i] = fill_value
+
+
+def __fill_in_missing_data(dates_list, incomplete_data):
     """TODO"""
 
     ndx_1 = 0
@@ -117,39 +192,74 @@ def fill_in_missing_data(dates_list, incomplete_data):
 
     complete_data = []
 
-    while ndx_1 < len_1 or ndx_2 < len_2:
+    while ndx_1 < len_1 and ndx_2 < len_2:
 
         if dates_list[ndx_1] == incomplete_data[ndx_2][0]:
+            complete_data.append(incomplete_data[ndx_2][1])
+            ndx_2 += 1
+        else:
+            complete_data.append(None)
+
+        ndx_1 += 1
+
+    #  finish filling in complete_data with null if we've reached
+    #  the end of incomplete_data
+    while ndx_1 < len_1:
+
+        complete_data.append(None)
+        ndx_1 += 1
+
+    assert len(complete_data) == len(dates_list)
+
+    #  now patch up the holes in the data
+    start_patch_ndx = None
+
+    for i in xrange(len(complete_data)):
+
+        if complete_data[i] is None:
+
+            if start_patch_ndx is None:
+                start_patch_ndx = i
 
         else:
-            ndx_2 += 1
+
+            if start_patch_ndx is not None:
+
+                #  patch
+                if not __patch_data(start_patch_ndx, i, complete_data):
+                    return []
+
+                #  reset for the next patch
+                start_patch_ndx = None
+
+    return complete_data
 
 
-def run(dates_list, lag):
+def run(symbols_list, dates_list, lag):
     """Entry point for price
 
     TODO
     """
 
-    sector_file = os.path.join(DATA_DOWNLOAD_DIR, SECTOR_MAPPING_FILE)
-    with open(sector_file, 'r') as f:
-        try:
-            sector_mapping = json.load(f)
-        except ValueError:
-            print "ERROR: could not load sector mapping file as JSON"
-            return False
+    #sector_file = os.path.join(DATA_DOWNLOAD_DIR, SECTOR_MAPPING_FILE)
+    #with open(sector_file, 'r') as f:
+    #    try:
+    #        sector_mapping = json.load(f)
+    #    except ValueError:
+    #        print "ERROR: could not load sector mapping file as JSON"
+    #        return False
 
-    for sector_code, sector_details in sector_mapping.iteritems():
+    #for sector_code, sector_details in sector_mapping.iteritems():
 
-        sector_dir = os.path.join(DATA_DOWNLOAD_DIR, sector_details["name"])
-        if not os.path.exists(sector_dir):
-            os.mkdir(sector_dir)
+    #    sector_dir = os.path.join(DATA_DOWNLOAD_DIR, sector_details["name"])
+    #    if not os.path.exists(sector_dir):
+    #        os.mkdir(sector_dir)
 
-        for symbol in sector_details["symbols"]:
-
-            __download_symbol_price_and_volume(
-                symbol,
-                dates_list,
-                sector_dir,
-                lag
-            )
+    #    for symbol in sector_details["symbols"]:
+    for symbol in symbols_list:
+        __download_symbol_price_and_volume(
+            symbol,
+            dates_list,
+            #sector_dir,
+            lag
+        )

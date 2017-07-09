@@ -161,22 +161,23 @@ def run():
     TODO
     """
 
-    symbol_lists = [[]]
-    index = 0
+    symbols_list = []
+    #symbol_lists = [[]]
+    #index = 0
 
-    for char in "X":#"ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+    for char in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
 
         for symbol in _get_symbols(char):
+            symbols_list.append(symbol)
+            #if len(symbol_lists[index]) <= QUERY_SYMBOL_COUNT:
+            #    symbol_lists[index].append(symbol)
+            #else:
+            #    symbol_lists.append([symbol])
+            #    index += 1
 
-            if len(symbol_lists[index]) <= QUERY_SYMBOL_COUNT:
-                symbol_lists[index].append(symbol)
-            else:
-                symbol_lists.append([symbol])
-                index += 1
+    #sector_mapping = _split_into_sector(symbol_lists)
 
-    sector_mapping = _split_into_sector(symbol_lists)
+    #with open(os.path.join(DATA_DOWNLOAD_DIR, SECTOR_MAPPING_FILE), 'w') as f:
+    #    json.dump(sector_mapping, f, indent=2)
 
-    with open(os.path.join(DATA_DOWNLOAD_DIR, SECTOR_MAPPING_FILE), 'w') as f:
-        json.dump(sector_mapping, f, indent=2)
-
-    return True
+    return symbols_list

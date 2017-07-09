@@ -18,6 +18,7 @@ QUERY_SYMBOL_COUNT = 20
 SECTOR_MAPPING_FILE = "sectored.json"
 DATA_DOWNLOAD_DIR = os.path.join(os.environ["HOME"], "sonicred/TrainingData")
 DATA_RANGE = 500
+LAST_DATE = "2017-07-07"
 
 
 def validate_configuration():

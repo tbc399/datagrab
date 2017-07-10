@@ -150,9 +150,18 @@ def __download_symbol_price_and_volume(symbol, dates_list, lag):
 
 
 def __patch_data(start_ndx, end_ndx, data):
-    """TODO"""
+    """TODO
+    
+    start_ndx is the index of the first null valued entry
+    in data, and end_ndx is the index of the first valid
+    entry in data after start_ndx. For example,
+    
+    ...|3|5|34|null|null|6|0|....
+                 ^       ^
+             start_ndx end_ndx
+    """
 
-    assert start_ndx < end_ndx
+    assert start_ndx <= end_ndx
 
     patch_size = end_ndx - start_ndx
 
@@ -161,25 +170,30 @@ def __patch_data(start_ndx, end_ndx, data):
         #  section is too large to patch
         return False
 
-    elif start_ndx > 0:
+    if start_ndx > 0 and end_ndx < len(data) - 1:
 
         a = data[start_ndx - 1]
         b = data[end_ndx]
-
         increment = (b - a) / float(patch_size)
 
         for i in xrange(start_ndx, end_ndx):
-
             data[i] = data[i - 1] + increment
 
-        return True
+    elif start_ndx > 0 and end_ndx == len(data) - 1:
 
-    else:
+        fill_value = data[start_ndx - 1]
+
+        for i in range(start_ndx, end_ndx):
+            data[i] = fill_value
+
+    elif start_ndx == 0 and end_ndx < len(data) - 1:
 
         fill_value = data[end_ndx]
 
         for i in range(end_ndx - 1, -1, -1):
             data[i] = fill_value
+
+    return True
 
 
 def __fill_in_missing_data(dates_list, incomplete_data):
@@ -232,6 +246,14 @@ def __fill_in_missing_data(dates_list, incomplete_data):
                 #  reset for the next patch
                 start_patch_ndx = None
 
+    if start_patch_ndx is not None:
+        if not __patch_data(
+                start_patch_ndx,
+                len(complete_data) - 1,
+                complete_data):
+            return []
+    for i in complete_data:
+        print i
     return complete_data
 
 

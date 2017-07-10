@@ -29,8 +29,8 @@ if __name__ == '__main__':
             DATA_RANGE
         )
 
-        #symbols_list = symbols.run()
-        symbols_list = ["COWNL"]
+        symbols_list = symbols.run()
+        #symbols_list = ["COWNL"]
         price.run(symbols_list, master_dates_list, 10)
 
     except requests.ConnectionError:

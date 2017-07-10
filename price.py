@@ -154,11 +154,7 @@ def __patch_data(start_ndx, end_ndx, data):
     
     start_ndx is the index of the first null valued entry
     in data, and end_ndx is the index of the first valid
-    entry in data after start_ndx. For example,
-    
-    ...|3|5|34|null|null|6|0|....
-                 ^       ^
-             start_ndx end_ndx
+    entry in data after start_ndx.
     """
 
     assert start_ndx <= end_ndx
@@ -170,7 +166,7 @@ def __patch_data(start_ndx, end_ndx, data):
         #  section is too large to patch
         return False
 
-    if start_ndx > 0 and end_ndx < len(data) - 1:
+    if start_ndx > 0 and end_ndx < len(data):
 
         a = data[start_ndx - 1]
         b = data[end_ndx]
@@ -179,14 +175,14 @@ def __patch_data(start_ndx, end_ndx, data):
         for i in xrange(start_ndx, end_ndx):
             data[i] = data[i - 1] + increment
 
-    elif start_ndx > 0 and end_ndx == len(data) - 1:
+    elif start_ndx > 0 and end_ndx == len(data):
 
         fill_value = data[start_ndx - 1]
 
         for i in range(start_ndx, end_ndx):
             data[i] = fill_value
 
-    elif start_ndx == 0 and end_ndx < len(data) - 1:
+    elif start_ndx == 0 and end_ndx < len(data):
 
         fill_value = data[end_ndx]
 
@@ -247,13 +243,13 @@ def __fill_in_missing_data(dates_list, incomplete_data):
                 start_patch_ndx = None
 
     if start_patch_ndx is not None:
+
         if not __patch_data(
                 start_patch_ndx,
-                len(complete_data) - 1,
+                len(complete_data),
                 complete_data):
             return []
-    for i in complete_data:
-        print i
+
     return complete_data
 
 

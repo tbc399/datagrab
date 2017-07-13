@@ -11,7 +11,7 @@ This is the driver for datagrab
 """
 
 
-import requests
+from requests import ConnectionError
 from utils import *
 from config import *
 from datetime import datetime
@@ -33,5 +33,5 @@ if __name__ == '__main__':
         #symbols_list = ["COWNL"]
         price.run(symbols_list, master_dates_list, 10)
 
-    except requests.ConnectionError:
+    except ConnectionError:
         print "could not connect to the interwebs"

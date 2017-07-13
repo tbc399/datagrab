@@ -17,13 +17,19 @@ from datetime import datetime, timedelta
 from config import *
 
 
-HEADERS = {
+__HEADERS = {
     "Authorization": "Bearer {}".format(TRADIER_BEARER_TOKEN),
     "Accept": "application/json"
 }
 
-
 __extended_dates_list = None
+
+#  Only stock symbols within this range will be considered.
+__MAX_PRICE = 10
+__MIN_PRICE = 0
+
+__MIN_VOLUME = 0
+__MAX_VOLUME = 1000000000
 
 
 #def __download_symbol_price_and_volume(symbol, dates_list, sector_dir, lag):
@@ -60,7 +66,7 @@ def __download_symbol_price_and_volume(symbol, dates_list, lag):
         query=query
     )
 
-    response = requests.get(url, headers=HEADERS)
+    response = requests.get(url, headers=__HEADERS)
 
     if response.status_code != 200:
         raise IOError(
@@ -84,6 +90,10 @@ def __download_symbol_price_and_volume(symbol, dates_list, lag):
 
     returned_data = json_response["history"]["day"]
 
+    if not __check_bounds(returned_data):
+        print "WARNING: failed bounds check for symbol {}".format(symbol)
+        return
+
     #  format the Tradier price into [date, price] values
     price_data = [
         [
@@ -105,8 +115,14 @@ def __download_symbol_price_and_volume(symbol, dates_list, lag):
         )
         return
 
+    #  normalize the price data
+    normalized_price_data = [
+        normalize(x, __MIN_PRICE, __MAX_PRICE) for x in complete_price_data
+    ]
+
     #  write out the base symbol (without any lag)
-    price = complete_price_data[lag:DATA_RANGE + lag]
+    price = normalized_price_data[lag:DATA_RANGE + lag]
+
     write_out_symbol_data(
         symbol,
         price,
@@ -116,7 +132,7 @@ def __download_symbol_price_and_volume(symbol, dates_list, lag):
 
     for i in xrange(1, lag):
 
-        price = complete_price_data[lag - i:DATA_RANGE + lag - i]
+        price = normalized_price_data[lag - i:DATA_RANGE + lag - i]
 
         write_out_dependent_data(
             "Lagging_{}".format(i),
@@ -140,13 +156,38 @@ def __download_symbol_price_and_volume(symbol, dates_list, lag):
         volume_data
     )
 
+    normalized_volume_data = [
+        normalize(x, __MIN_VOLUME, __MAX_VOLUME)
+        for x in complete_volume_data[lag:DATA_RANGE + lag]
+    ]
+
     write_out_dependent_data(
         "Volume",
         symbol,
-        complete_volume_data[lag:DATA_RANGE + lag],
+        normalized_volume_data,
         #sector_dir,
         description="The daily volume"
     )
+
+
+def __check_bounds(tradier_data):
+    """Check price and volume bounds
+
+    TODO
+    """
+
+    for entry in tradier_data:
+
+        price = entry['close']
+        vol = entry['volume']
+
+        if price < __MIN_PRICE or price > __MAX_PRICE:
+            return False
+
+        if vol < __MIN_VOLUME or vol > __MAX_VOLUME:
+            return False
+
+    return True
 
 
 def __patch_data(start_ndx, end_ndx, data):

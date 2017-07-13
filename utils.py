@@ -188,3 +188,12 @@ def get_number_of_weekdays(start, number_of_days):
     dates_list.reverse()
 
     return dates_list
+
+
+def normalize(value, minimum, maximum):
+    """Normalize using min and max
+
+    TODO
+    """
+
+    return (value - minimum) / (maximum - minimum)

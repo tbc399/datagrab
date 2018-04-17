@@ -93,9 +93,9 @@ def __month_year_iter(end_month, end_year):
         yield y, m+1
 
 
-def get_valid_market_dates(end_date, num_dates):
+def get_valid_market_dates(start_date, end_date):
     """Return master dates list
-    
+
     TODO
     """
 
@@ -136,7 +136,7 @@ def get_valid_market_dates(end_date, num_dates):
             if d <= end_date and entry["status"] == "open":
                 market_open_dates.append(d)
             elif entry["status"] == "holiday":
-                print json.dumps(entry, indent=2)
+                print(json.dumps(entry, indent=2))
 
         if len(market_open_dates) > num_dates:
             market_open_dates = market_open_dates[:num_dates]

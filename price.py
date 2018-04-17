@@ -39,7 +39,7 @@ def __download_symbol_price_and_volume(symbol, dates_list, lag):
     TODO
     """
 
-    print "Downloading price and volume for {sym}".format(sym=symbol)
+    print("Downloading price and volume for {sym}").format(sym=symbol)
 
     global __extended_dates_list
 
@@ -77,21 +77,21 @@ def __download_symbol_price_and_volume(symbol, dates_list, lag):
     json_response = response.json()
 
     if not json_response:
-        print "WARNING: could not download data for symbol {}".format(symbol)
-        print "WARNING: status code {code}: {body}".format(
+        print("WARNING: could not download data for symbol {}").format(symbol)
+        print("WARNING: status code {code}: {body}".format(
             code=response.status_code,
             body=response.text
-        )
+        ))
         return
 
     if not json_response["history"] or not json_response["history"]["day"]:
-        print "WARNING: no history could be found for symbol {}".format(symbol)
+        print("WARNING: no history could be found for symbol {}").format(symbol)
         return
 
     returned_data = json_response["history"]["day"]
 
     if not __check_bounds(returned_data):
-        print "WARNING: failed bounds check for symbol {}".format(symbol)
+        print("WARNING: failed bounds check for symbol {}").format(symbol)
         return
 
     #  format the Tradier price into [date, price] values
@@ -110,7 +110,7 @@ def __download_symbol_price_and_volume(symbol, dates_list, lag):
 
     if not complete_price_data:
         #  holes in the data are too big, so skip
-        print "WARNING: {} has too many missing data points. skipping".format(
+        print("WARNING: {} has too many missing data points. skipping").format(
             symbol
         )
         return
@@ -131,9 +131,7 @@ def __download_symbol_price_and_volume(symbol, dates_list, lag):
     )
 
     for i in xrange(1, lag):
-
         price = normalized_price_data[lag - i:DATA_RANGE + lag - i]
-
         write_out_dependent_data(
             "Lagging_{}".format(i),
             symbol,
@@ -177,13 +175,10 @@ def __check_bounds(tradier_data):
     """
 
     for entry in tradier_data:
-
         price = entry['close']
         vol = entry['volume']
-
         if price < __MIN_PRICE or price > __MAX_PRICE:
             return False
-
         if vol < __MIN_VOLUME or vol > __MAX_VOLUME:
             return False
 
@@ -203,30 +198,21 @@ def __patch_data(start_ndx, end_ndx, data):
     patch_size = end_ndx - start_ndx
 
     if patch_size > 5:
-
         #  section is too large to patch
         return False
 
     if start_ndx > 0 and end_ndx < len(data):
-
         a = data[start_ndx - 1]
         b = data[end_ndx]
         increment = (b - a) / float(patch_size)
-
         for i in xrange(start_ndx, end_ndx):
             data[i] = data[i - 1] + increment
-
     elif start_ndx > 0 and end_ndx == len(data):
-
         fill_value = data[start_ndx - 1]
-
         for i in range(start_ndx, end_ndx):
             data[i] = fill_value
-
     elif start_ndx == 0 and end_ndx < len(data):
-
         fill_value = data[end_ndx]
-
         for i in range(end_ndx - 1, -1, -1):
             data[i] = fill_value
 
@@ -240,23 +226,19 @@ def __fill_in_missing_data(dates_list, incomplete_data):
     ndx_2 = 0
     len_1 = len(dates_list)
     len_2 = len(incomplete_data)
-
     complete_data = []
 
     while ndx_1 < len_1 and ndx_2 < len_2:
-
         if dates_list[ndx_1] == incomplete_data[ndx_2][0]:
             complete_data.append(incomplete_data[ndx_2][1])
             ndx_2 += 1
         else:
             complete_data.append(None)
-
         ndx_1 += 1
 
     #  finish filling in complete_data with null if we've reached
     #  the end of incomplete_data
     while ndx_1 < len_1:
-
         complete_data.append(None)
         ndx_1 += 1
 
@@ -266,25 +248,18 @@ def __fill_in_missing_data(dates_list, incomplete_data):
     start_patch_ndx = None
 
     for i in xrange(len(complete_data)):
-
         if complete_data[i] is None:
-
             if start_patch_ndx is None:
                 start_patch_ndx = i
-
         else:
-
             if start_patch_ndx is not None:
-
                 #  patch
                 if not __patch_data(start_patch_ndx, i, complete_data):
                     return []
-
                 #  reset for the next patch
                 start_patch_ndx = None
 
     if start_patch_ndx is not None:
-
         if not __patch_data(
                 start_patch_ndx,
                 len(complete_data),

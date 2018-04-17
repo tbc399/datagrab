@@ -45,9 +45,7 @@ def _get_symbols(character):
     and NYSE.
     """
 
-    lchar = character.lower()
-
-    if lchar < 'a' or lchar > 'z':
+    if 'a' > character.lower() > 'z':
         raise ValueError("'{}' is not a character".format(character))
 
     uri = "https://{host}/{version}/markets/lookup".format(
@@ -119,21 +117,21 @@ def _split_into_sector(symbol_lists):
             symbol = entry['request']
 
             if "error" in entry:
-                print "WARNING: Tradier error in getting symbol " \
-                      "{sym}: {msg}".format(sym=symbol, msg=entry["error"])
+                msg = 'WARNING: Tradier error in getting symbol {}: {}'
+                print(msg.format(symbol, entry["error"]))
                 continue
 
             try:
                 sector_code = entry['results'][0]['tables'][
                     'asset_classification']['morningstar_sector_code']
             except TypeError:
-                print "WARNING: no sector info on {sym}. Skipping".format(
+                print("WARNING: no sector info on {sym}. Skipping".format(
                     sym=symbol
-                )
+                ))
                 continue
             except KeyError as error:
-                print "WARNING: could not get a json field '{}'".format(error)
-                print json.dumps(entry, indent=2)
+                print("WARNING: could not get a json field '{}'".format(error))
+                print(json.dumps(entry, indent=2))
                 continue
 
             if sector_code in sector_mapping:
@@ -142,9 +140,9 @@ def _split_into_sector(symbol_lists):
                 try:
                     sector_name = MORNINGSTAR_SECTOR_CODES[sector_code]
                 except KeyError as e:
-                    print "WARNING: sector code {code} is not legit!".format(
+                    print("WARNING: sector code {code} is not legit!".format(
                         code=sector_code
-                    )
+                    ))
                     sector_name = "Unknown"
 
                 sector_mapping[sector_code] = {

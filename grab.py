@@ -22,16 +22,23 @@ import price
 if __name__ == '__main__':
 
     try:
+        # connect to the database
+        pass
 
-        print "Gathering valid market open dates..."
+    except:
+        # handle can't connect
+        pass
+
+    try:
+        symbols_list = symbols.run()
+        print(symbols_list)
+        print('Gathering valid market open dates...')
         master_dates_list = get_valid_market_dates(
             datetime.strptime(LAST_DATE, "%Y-%m-%d").date(),
             DATA_RANGE
         )
-
-        symbols_list = symbols.run()
+        print(master_dates_list)
         #symbols_list = ["COWNL"]
-        price.run(symbols_list, master_dates_list, 10)
-
+        #price.run(symbols_list, master_dates_list, 10)
     except ConnectionError:
-        print "could not connect to the interwebs"
+        print('could not connect to the interwebs')

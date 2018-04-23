@@ -35,6 +35,18 @@ HEADERS = {
     "Accept": "application/json"
 }
 
+def _validate_symbol(symbol):
+    """Validate a stock symbol
+
+    Return true if this symbol doesn't have any funky stuff going
+    on with it like ABDn:BXRT or something like that
+    """
+
+    for c in symbol:
+        if c < 'A' or c > 'Z':
+            return False
+
+    return True
 
 def _get_symbols(character):
     """Grabs stock symbols by character
@@ -75,7 +87,7 @@ def _get_symbols(character):
 
     for security in securities:
         symbol = security['symbol']
-        if '\'' not in symbol and '/' not in symbol and 'w' not in symbol:
+        if _validate_symbol(symbol):
             yield symbol
 
 

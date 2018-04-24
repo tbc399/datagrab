@@ -12,7 +12,8 @@ other modules
 import os
 import json
 from datetime import timedelta, datetime
-from config import *
+from config import TRADIER_API_DOMAIN, TRADIER_API_VERSION, TRADIER_BEARER_TOKEN
+from config import DATA_DOWNLOAD_DIR
 import requests
 
 
@@ -80,15 +81,16 @@ def write_out_dependent_data(name, symbol, data, description=""):
         json.dump(json_data, f, indent=2)
 
 
-def __month_year_iter(end_month, end_year):
+def __month_year_iter(start_month, start_year, end_month, end_year):
     """Helper for year/month iteration
 
     TODO
     """
 
-    ym_end = 12*end_year + end_month - 1
+    ym_end = 12 * end_year + end_month
+    ym_start = 12 * start_year + start_month - 1
 
-    for ym in range(ym_end, -1, -1):
+    for ym in range(ym_start, ym_end):
         y, m = divmod(ym, 12)
         yield y, m+1
 
@@ -96,20 +98,25 @@ def __month_year_iter(end_month, end_year):
 def get_valid_market_dates(start_date, end_date):
     """Return master dates list
 
-    TODO
+    This will go get all of the dates withing the specified range where the
+    stock market is open.
     """
-
-    end_year = end_date.year
-    end_month = end_date.month
 
     market_open_dates = []
 
-    for year, month in __month_year_iter(end_month, end_year):
+    ym_gen = __month_year_iter(
+            start_date.month,
+            start_date.year,
+            end_date.month,
+            end_date.year
+        )
+
+    for year, month in ym_gen:
 
         uri = "https://{host}/{version}/markets/calendar".format(
-            host=TRADIER_API_DOMAIN,
-            version=TRADIER_API_VERSION
-        )
+                host=TRADIER_API_DOMAIN,
+                version=TRADIER_API_VERSION
+            )
         query = "year={year}&month={month}".format(
             year=year,
             month=month,
@@ -138,12 +145,7 @@ def get_valid_market_dates(start_date, end_date):
             elif entry["status"] == "holiday":
                 print(json.dumps(entry, indent=2))
 
-        if len(market_open_dates) > num_dates:
-            market_open_dates = market_open_dates[:num_dates]
-
-        if len(market_open_dates) == num_dates:
-            market_open_dates.reverse()
-            return market_open_dates
+    return market_open_dates
 
 
 def get_weekdays_in_range(start, end):

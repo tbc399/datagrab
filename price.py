@@ -269,7 +269,8 @@ def __fill_in_missing_data(dates_list, incomplete_data):
     return complete_data
 
 
-def run(symbols_list, dates_list, lag):
+def run(db_conn, symbols, dates):
+#def run(symbols_list, dates_list, lag):
     """Entry point for price
 
     TODO
@@ -290,6 +291,11 @@ def run(symbols_list, dates_list, lag):
     #        os.mkdir(sector_dir)
 
     #    for symbol in sector_details["symbols"]:
+    
+    for name, sector in symbols:
+        db_dates = get_db_dates(db_conn, name)
+        missing_dates = set(master_dates_list) - set(db_dates)
+
     for symbol in symbols_list:
         __download_symbol_price_and_volume(
             symbol,

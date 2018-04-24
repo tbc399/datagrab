@@ -58,5 +58,6 @@ if __name__ == '__main__':
         start = datetime.strptime(START_DATE, "%Y-%m-%d").date()
         master_dates_list = get_valid_market_dates(start, end)
 
-        #  update the prices for all symbols in symbol_names in th db
+        #  asynchronously update the prices for all symbols in
+        #  symbol_names in th db
         price.run(conn, symbol_names, master_dates_list)

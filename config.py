@@ -42,6 +42,7 @@ def load(file_name):
     global DB_NAME
     global DB_USER
     global DB_PASSWORD
+    global DB_HOST
     global TZ
 
     TRADIER_API_DOMAIN = config['tradier_api_domain']
@@ -53,6 +54,7 @@ def load(file_name):
     DB_NAME = config['db_name']
     DB_USER = config['db_user']
     DB_PASSWORD = config['db_password']
+    BD_HOST = config['db_host']
     TZ = config['tz']
 
 

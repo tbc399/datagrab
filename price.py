@@ -11,6 +11,8 @@ given set of symbols.
 
 
 import requests
+import aiohttp
+import asyncio
 import os
 from utils import *
 from datetime import datetime, timedelta
@@ -269,6 +271,14 @@ def __fill_in_missing_data(dates_list, incomplete_data):
     return complete_data
 
 
+async def __run_helper(loop, symbols, dates):
+    """
+    """
+
+    async with aiohttp.ClientSession(loop=loop) as session:
+        tasks = [__download_prices(session, name, dates) for name in symbols]
+        await asyncio.gather(*tasks)
+
 def run(db_conn, symbols, dates):
 #def run(symbols_list, dates_list, lag):
     """Entry point for price
@@ -276,22 +286,12 @@ def run(db_conn, symbols, dates):
     TODO
     """
 
-    #sector_file = os.path.join(DATA_DOWNLOAD_DIR, SECTOR_MAPPING_FILE)
-    #with open(sector_file, 'r') as f:
-    #    try:
-    #        sector_mapping = json.load(f)
-    #    except ValueError:
-    #        print "ERROR: could not load sector mapping file as JSON"
-    #        return False
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(__run_helper(loop, symbols, dates))
+    loop.close()
 
-    #for sector_code, sector_details in sector_mapping.iteritems():
 
-    #    sector_dir = os.path.join(DATA_DOWNLOAD_DIR, sector_details["name"])
-    #    if not os.path.exists(sector_dir):
-    #        os.mkdir(sector_dir)
 
-    #    for symbol in sector_details["symbols"]:
-    
     for name, sector in symbols:
         db_dates = get_db_dates(db_conn, name)
         missing_dates = set(master_dates_list) - set(db_dates)

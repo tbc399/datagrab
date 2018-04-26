@@ -20,6 +20,7 @@ START_DATE = None
 DB_NAME = None
 DB_USER = None
 DB_PASSWORD = None
+DB_HOST = None
 TZ = None  # EST since NASDAQ and NYSE are in New York
 
 
@@ -28,10 +29,6 @@ def load(file_name):
 
     Load in the configuration variable values from a file
     """
-
-    config = None
-    with open(file_name, 'r') as f:
-        config = json.load(f)
 
     global TRADIER_API_DOMAIN
     global TRADIER_API_VERSION
@@ -45,17 +42,21 @@ def load(file_name):
     global DB_HOST
     global TZ
 
-    TRADIER_API_DOMAIN = config['tradier_api_domain']
-    TRADIER_API_VERSION = config['tradier_api_version']
-    TRADIER_BETA_VERSION = config['tradier_beta_version']
-    TRADIER_BEARER_TOKEN = config['tradier_bearer_token']
-    QUERY_SYMBOL_COUNT = config['query_symbol_count']
-    START_DATE = config['start_date']
-    DB_NAME = config['db_name']
-    DB_USER = config['db_user']
-    DB_PASSWORD = config['db_password']
-    BD_HOST = config['db_host']
-    TZ = config['tz']
+    j = None
+    with open(file_name, 'r') as f:
+        j = json.load(f)
+
+    TRADIER_API_DOMAIN = j['tradier_api_domain']
+    TRADIER_API_VERSION = j['tradier_api_version']
+    TRADIER_BETA_VERSION = j['tradier_beta_version']
+    TRADIER_BEARER_TOKEN = j['tradier_bearer_token']
+    QUERY_SYMBOL_COUNT = j['query_symbol_count']
+    START_DATE = j['start_date']
+    DB_NAME = j['db_name']
+    DB_USER = j['db_user']
+    DB_PASSWORD = j['db_password']
+    DB_HOST = j['db_host']
+    TZ = j['tz']
 
 
 def validate_configuration():

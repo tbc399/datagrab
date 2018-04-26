@@ -12,8 +12,7 @@ into their respective sectors.
 
 import json
 import requests
-import logging
-from config import *
+import config
 
 
 MORNINGSTAR_SECTOR_CODES = {
@@ -30,10 +29,7 @@ MORNINGSTAR_SECTOR_CODES = {
     311: 'Technology',
 }
 
-HEADERS = {
-    "Authorization": "Bearer {}".format(TRADIER_BEARER_TOKEN),
-    "Accept": "application/json"
-}
+
 
 def _validate_symbol(symbol):
     """Validate a stock symbol
@@ -48,6 +44,7 @@ def _validate_symbol(symbol):
 
     return True
 
+
 def _get_symbols(character):
     """Grabs stock symbols by character
     
@@ -56,23 +53,25 @@ def _get_symbols(character):
     that character. For now, it only pulls from NASDAQ
     and NYSE.
     """
-
+    print(character)
     if 'a' > character.lower() > 'z':
         raise ValueError("'{}' is not a character".format(character))
 
-    uri = "https://{host}/{version}/markets/lookup".format(
-        host=TRADIER_API_DOMAIN,
-        version=TRADIER_API_VERSION
+    url = "https://{host}/{version}/markets/lookup".format(
+        host=config.TRADIER_API_DOMAIN,
+        version=config.TRADIER_API_VERSION
     )
-    query = "q={character}&exchanges=N,Q&types=stock".format(
-        character=character
-    )
-    url = "{uri}?{query}".format(
-        uri=uri,
-        query=query
-    )
+    query = {
+        'q': character,
+        'exchanges': 'N,Q',
+        'types': 'stock'
+    }
+    headers = {
+        "Authorization": "Bearer {}".format(config.TRADIER_BEARER_TOKEN),
+        "Accept": "application/json"
+    }
 
-    response = requests.get(url, headers=HEADERS)
+    response = requests.get(url, params=query, headers=headers)
 
     if response.status_code != 200:
         raise IOError(
@@ -80,6 +79,7 @@ def _get_symbols(character):
             "the symbols for character {char}".format(char=character)
         )
 
+    print(character, "{}/{}".format(response.headers['X-Ratelimit-Used'], response.headers['X-Ratelimit-Available']))
     json_response = json.loads(response.text)
 
     #  list of returned symbols

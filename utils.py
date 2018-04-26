@@ -12,15 +12,8 @@ other modules
 import os
 import json
 from datetime import timedelta, datetime
-from config import TRADIER_API_DOMAIN, TRADIER_API_VERSION, TRADIER_BEARER_TOKEN
-from config import DATA_DOWNLOAD_DIR
+import config
 import requests
-
-
-HEADERS = {
-    "Authorization": "Bearer {}".format(TRADIER_BEARER_TOKEN),
-    "Accept": "application/json"
-}
 
 
 #def write_out_symbol_data(symbol, data, sector_dir, description=""):
@@ -112,30 +105,28 @@ def get_valid_market_dates(start_date, end_date):
         )
 
     for year, month in ym_gen:
-
-        uri = "https://{host}/{version}/markets/calendar".format(
-                host=TRADIER_API_DOMAIN,
-                version=TRADIER_API_VERSION
+        url = "https://{host}/{version}/markets/calendar".format(
+                host=config.TRADIER_API_DOMAIN,
+                version=config.TRADIER_API_VERSION
             )
-        query = "year={year}&month={month}".format(
-            year=year,
-            month=month,
-        )
-        url = "{uri}?{query}".format(
-            uri=uri,
-            query=query
-        )
-
-        response = requests.get(url, headers=HEADERS)
+        query = {
+            'year': year,
+            'month': month
+        }
+        headers = {
+            "Authorization": "Bearer {}".format(config.TRADIER_BEARER_TOKEN),
+            "Accept": "application/json"
+        }
+        response = requests.get(url, params=query, headers=headers)
 
         if response.status_code != 200:
             raise IOError(
                 "there was a network problem getting "
                 "the market calendar on {}/{}".format(month, year)
             )
-
+        
         j = response.json()
-
+        print(year, month, "{}/{}".format(response.headers, 4))
         for entry in reversed(j["calendar"]["days"]["day"]):
 
             d = datetime.strptime(entry["date"], "%Y-%m-%d").date()

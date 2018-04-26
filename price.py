@@ -13,16 +13,13 @@ given set of symbols.
 import requests
 import aiohttp
 import asyncio
-import os
+from asyncio_throttle import Throttler
+import time
 from utils import *
 from datetime import datetime, timedelta
-from config import *
+import config
 
 
-__HEADERS = {
-    "Authorization": "Bearer {}".format(TRADIER_BEARER_TOKEN),
-    "Accept": "application/json"
-}
 
 __extended_dates_list = None
 
@@ -271,16 +268,56 @@ def __fill_in_missing_data(dates_list, incomplete_data):
     return complete_data
 
 
+async def __download_prices(session, throttle, name, dates):
+    """Download a symbol's prces
+
+    TODO
+    """
+
+    #missing_dates = set(dates) - set(db_dates)
+    url = "https://{host}/{version}/markets/history".format(
+        host=config.TRADIER_API_DOMAIN,
+        version=config.TRADIER_API_VERSION
+    )
+    query_params = {
+        'symbol': name,
+        'start': '2015-01-01',#start_date,
+        'end': '2017-01-01',#end_date
+    }
+    headers = {
+        "Authorization": "Bearer {}".format(config.TRADIER_BEARER_TOKEN),
+        "Accept": "application/json"
+    }
+
+    while True:
+        try:
+            print('fetching {}'.format(name))
+            async with throttle:
+                async with aiohttp.request('GET', url, params=query_params, headers=headers) as resp:
+                    prices = await resp.text()
+                    if 'Quota Violation' in prices:
+                        print('Quota violation...')
+                        await asyncio.sleep(0)
+                    else:
+                        print('fetched {} ({})'.format(name, resp.headers['X-Ratelimit-Used']))
+                        break
+        except aiohttp.connector.ClientConnectorError as e:
+            print('Connection error. Waiting ...')
+            await asyncio.sleep(2)
+
+
 async def __run_helper(loop, symbols, dates):
     """
     """
 
+    throttle = Throttler(rate_limit=5)
     async with aiohttp.ClientSession(loop=loop) as session:
-        tasks = [__download_prices(session, name, dates) for name in symbols]
+        tasks = [__download_prices(
+            session, throttle, name, dates) for name in symbols]
         await asyncio.gather(*tasks)
 
+
 def run(db_conn, symbols, dates):
-#def run(symbols_list, dates_list, lag):
     """Entry point for price
 
     TODO
@@ -289,17 +326,3 @@ def run(db_conn, symbols, dates):
     loop = asyncio.get_event_loop()
     loop.run_until_complete(__run_helper(loop, symbols, dates))
     loop.close()
-
-
-
-    for name, sector in symbols:
-        db_dates = get_db_dates(db_conn, name)
-        missing_dates = set(master_dates_list) - set(db_dates)
-
-    for symbol in symbols_list:
-        __download_symbol_price_and_volume(
-            symbol,
-            dates_list,
-            #sector_dir,
-            lag
-        )

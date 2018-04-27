@@ -14,7 +14,6 @@ import requests
 import aiohttp
 import asyncio
 from asyncio_throttle import Throttler
-import time
 from utils import *
 from datetime import datetime, timedelta
 import config

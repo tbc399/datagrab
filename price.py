@@ -13,12 +13,11 @@ given set of symbols.
 import requests
 import aiohttp
 import asyncio
-from asyncio_throttle import Throttler
-import time
-from utils import *
-from datetime import datetime, timedelta
 import config
-
+import psycopg2
+import json
+from asyncio_throttle import Throttler
+from datetime import datetime, timedelta
 
 
 __extended_dates_list = None
@@ -186,7 +185,7 @@ def __check_bounds(tradier_data):
 
 def __patch_data(start_ndx, end_ndx, data):
     """TODO
-    
+
     start_ndx is the index of the first null valued entry
     in data, and end_ndx is the index of the first valid
     entry in data after start_ndx.
@@ -204,7 +203,7 @@ def __patch_data(start_ndx, end_ndx, data):
         a = data[start_ndx - 1]
         b = data[end_ndx]
         increment = (b - a) / float(patch_size)
-        for i in xrange(start_ndx, end_ndx):
+        for i in range(start_ndx, end_ndx):
             data[i] = data[i - 1] + increment
     elif start_ndx > 0 and end_ndx == len(data):
         fill_value = data[start_ndx - 1]
@@ -218,7 +217,7 @@ def __patch_data(start_ndx, end_ndx, data):
     return True
 
 
-def __fill_in_missing_data(dates_list, incomplete_data):
+def __fill_in_missing_data(dates_list, incomplete_data, symbol, sector):
     """TODO"""
 
     ndx_1 = 0
@@ -226,94 +225,193 @@ def __fill_in_missing_data(dates_list, incomplete_data):
     len_1 = len(dates_list)
     len_2 = len(incomplete_data)
     complete_data = []
-
+    for i in dates_list:
+        print(i)
     while ndx_1 < len_1 and ndx_2 < len_2:
-        if dates_list[ndx_1] == incomplete_data[ndx_2][0]:
-            complete_data.append(incomplete_data[ndx_2][1])
+        if dates_list[ndx_1] == incomplete_data[ndx_2][1]:
+            complete_data.append(incomplete_data[ndx_2])
             ndx_2 += 1
         else:
-            complete_data.append(None)
+            complete_data.append(
+                (symbol, dates_list[ndx_1], sector,
+                    None, None, None, None, None)
+            )
         ndx_1 += 1
 
     #  finish filling in complete_data with null if we've reached
     #  the end of incomplete_data
     while ndx_1 < len_1:
-        complete_data.append(None)
+        complete_data.append(
+            (symbol, dates_list[ndx_1], sector,
+                None, None, None, None, None)
+        )
         ndx_1 += 1
 
     assert len(complete_data) == len(dates_list)
 
     #  now patch up the holes in the data
-    start_patch_ndx = None
+    #start_patch_ndx = None
 
-    for i in xrange(len(complete_data)):
-        if complete_data[i] is None:
-            if start_patch_ndx is None:
-                start_patch_ndx = i
-        else:
-            if start_patch_ndx is not None:
-                #  patch
-                if not __patch_data(start_patch_ndx, i, complete_data):
-                    return []
-                #  reset for the next patch
-                start_patch_ndx = None
+    #for i in range(len(complete_data)):
+    #    if complete_data[i][3] is None:
+    #        if start_patch_ndx is None:
+    #            start_patch_ndx = i
+    #    else:
+    #        if start_patch_ndx is not None:
+    #            #  patch
+    #            if not __patch_data(start_patch_ndx, i, complete_data):
+    #                return []
+    #            #  reset for the next patch
+    #            start_patch_ndx = None
 
-    if start_patch_ndx is not None:
-        if not __patch_data(
-                start_patch_ndx,
-                len(complete_data),
-                complete_data):
-            return []
-
+    #if start_patch_ndx is not None:
+    #    if not __patch_data(
+    #            start_patch_ndx,
+    #            len(complete_data),
+    #            complete_data):
+    #        return []
+    for i in complete_data:
+        print(i)
     return complete_data
 
 
-async def __download_prices(session, throttle, name, dates):
+def __format_prices(prices_json, symbol, sector_code, dates):
+    """Transform prices to tuples
+
+    Take in a json object of prices for a given name and
+    transform it into a list of tuples to be inserted into
+    the db
+    """
+
+    if not prices_json['history'] or not prices_json['history']['day']:
+        print("WARNING: no history found for {}".format(symbol))
+        return []
+
+    returned_data = prices_json["history"]["day"]
+
+    #  replace any "NaN" values with null
+    for dict_obj in returned_data:
+        for key in dict_obj:
+            if dict_obj[key] == 'NaN':
+                dict_obj[key] = None
+
+    #  format the Tradier price into [date, price] values
+    price_data = [
+        (
+            symbol,
+            datetime.strptime(day["date"], "%Y-%m-%d").date(),
+            sector_code,
+            day['open'],
+            day['high'],
+            day['low'],
+            day['close'],
+            day['volume']
+        ) for day in returned_data
+    ]
+
+    #  fill in any holes in the price data
+    complete_price_data = __fill_in_missing_data(
+        dates,
+        price_data,
+        symbol,
+        sector_code
+    )
+
+    if not complete_price_data:
+        #  holes in the data are too big, so skip
+        print("WARNING: {} has too many missing data points. skipping").format(
+            symbol
+        )
+        return []
+
+    return complete_price_data
+
+
+def __get_missing_dates_range(db_conn, name, dates):
+    """Get date range
+
+    This guy gets the date range that we need to grab from Tradier.
+    it compares the dates in th db with dates (the valid market dates)
+    and gets the set difference of the two.
+    """
+
+    cursor = db_conn.cursor()
+    cursor.execute('SELECT Date FROM stock_prices WHERE Name = %s', (name,))
+    db_dates = cursor.fetchall()
+    cursor.close()
+
+    missing_dates = set(dates) - set(db_dates)
+
+    start_date = min(missing_dates)
+    end_date = max(missing_dates)
+
+    return start_date, end_date
+
+
+async def __download_prices(session, db_conn, throttle, symbol, dates):
     """Download a symbol's prces
 
     TODO
     """
 
-    #missing_dates = set(dates) - set(db_dates)
+    name, sector = symbol
+
+    start_date, end_date = __get_missing_dates_range(db_conn, name, dates)
+
     url = "https://{host}/{version}/markets/history".format(
         host=config.TRADIER_API_DOMAIN,
         version=config.TRADIER_API_VERSION
     )
     query_params = {
         'symbol': name,
-        'start': '2015-01-01',#start_date,
-        'end': '2017-01-01',#end_date
+        'start': str(start_date),
+        'end': str(end_date)
     }
     headers = {
         "Authorization": "Bearer {}".format(config.TRADIER_BEARER_TOKEN),
         "Accept": "application/json"
     }
 
+    prices = None
     while True:
         try:
             print('fetching {}'.format(name))
             async with throttle:
-                async with aiohttp.request('GET', url, params=query_params, headers=headers) as resp:
+                async with aiohttp.request('GET', url, params=query_params,
+                        headers=headers) as resp:
                     prices = await resp.text()
                     if 'Quota Violation' in prices:
                         print('Quota violation...')
                         await asyncio.sleep(0)
                     else:
-                        print('fetched {} ({})'.format(name, resp.headers['X-Ratelimit-Used']))
                         break
         except aiohttp.connector.ClientConnectorError as e:
             print('Connection error. Waiting ...')
             await asyncio.sleep(2)
 
+    if prices is not None:
 
-async def __run_helper(loop, symbols, dates):
-    """
-    """
+        prices = json.loads(prices)
+        prices_tuples = __format_prices(prices, name, sector, dates)
+        for i in prices_tuples:
+            print(i)
+        #cursor = db_conn.cursor()
+        #query = 'INSERT INTO stock_prices' \
+        #        '  VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'
+        #psycopg2.extras.execute_batch(cursor, query, prices_tuples)
+        #db_conn.commit()
+        #cursor.close()
 
+
+async def __run_helper(db_conn, loop, symbols, dates):
+    """Dole out price requests"""
+
+    #  throttle the requests since Tradier has a rate limit
     throttle = Throttler(rate_limit=5)
+
     async with aiohttp.ClientSession(loop=loop) as session:
         tasks = [__download_prices(
-            session, throttle, name, dates) for name in symbols]
+            session, db_conn, throttle, name, dates) for name in symbols]
         await asyncio.gather(*tasks)
 
 
@@ -324,5 +422,5 @@ def run(db_conn, symbols, dates):
     """
 
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(__run_helper(loop, symbols, dates))
+    loop.run_until_complete(__run_helper(db_conn, loop, symbols, dates))
     loop.close()

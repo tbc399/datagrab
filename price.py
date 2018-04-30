@@ -14,9 +14,9 @@ import requests
 import aiohttp
 import asyncio
 import config
-import psycopg2
 import json
 from asyncio_throttle import Throttler
+from utils import get_valid_market_dates
 from datetime import datetime, timedelta
 
 

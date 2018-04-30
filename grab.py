@@ -29,20 +29,24 @@ if __name__ == '__main__':
     except IndexError:
         print('Need a json config file to read from', file=sys.stderr)
         exit(-1)
-    #db_credentials = dict(
-    #        dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD, host=DB_HOST
-    #    )
-    #with connect(db_credentials) as conn:
+    db_credentials = dict(
+            dbname=config.DB_NAME,
+            user=config.DB_USER,
+            password=config.DB_PASSWORD,
+            host=config.DB_HOST
+        )
+    with connect(**db_credentials) as conn:
 
-    #  a list of tuples of the form (<symbol_name>, <sector_code>)
-    symbol_names = symbols.run()
+        #  a list of tuples of the form (<symbol_name>, <sector_code>)
+        #TESTsymbol_names = symbols.run()
+        symbol_names = [('AAPL', 311)]
 
-    #  get all valid open market dates within a range
-    tz_offset = timezone(timedelta(hours=config.TZ))
-    end = datetime.now(tz=tz_offset).date()
-    start = datetime.strptime(config.START_DATE, "%Y-%m-%d").date()
-    master_dates_list = get_valid_market_dates(start, end)
+        #  get all valid open market dates within a range
+        tz_offset = timezone(timedelta(hours=config.TZ))
+        end = datetime.now(tz=tz_offset).date()
+        start = datetime.strptime(config.START_DATE, "%Y-%m-%d").date()
+        master_dates_list = get_valid_market_dates(start, end)
 
-    #  asynchronously update the prices for all symbols in
-    #  symbol_names in th db
-    price.run(None, symbol_names, master_dates_list)
+        #  asynchronously update the prices for all symbols in
+        #  symbol_names in th db
+        price.run(conn, symbol_names, master_dates_list)

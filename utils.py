@@ -127,7 +127,7 @@ def get_valid_market_dates(start_date, end_date):
         
         j = response.json()
         print(year, month, "{}/{}".format(response.headers, 4))
-        for entry in reversed(j["calendar"]["days"]["day"]):
+        for entry in j["calendar"]["days"]["day"]:
             print(entry)
             d = datetime.strptime(entry["date"], "%Y-%m-%d").date()
 

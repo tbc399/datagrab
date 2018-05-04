@@ -295,16 +295,18 @@ def __format_prices(prices_json, symbol, sector_code, dates):
             if dict_obj[key] == 'NaN':
                 dict_obj[key] = None
 
+    def to_cents(x): return int(x * 10)
+
     #  format the Tradier price into [date, price] values
     price_data = [
         (
             symbol,
             datetime.strptime(day["date"], "%Y-%m-%d").date(),
             sector_code,
-            day['open'],
-            day['high'],
-            day['low'],
-            day['close'],
+            to_cents(day['open']),
+            to_cents(day['high']),
+            to_cents(day['low']),
+            to_cents(day['close']),
             day['volume']
         ) for day in returned_data
     ]

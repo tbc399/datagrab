@@ -15,6 +15,8 @@ import aiohttp
 import asyncio
 import config
 import json
+import psycopg2
+from psycopg2 import extras
 from asyncio_throttle import Throttler
 from utils import get_valid_market_dates
 from datetime import datetime, timedelta
@@ -270,8 +272,6 @@ def __fill_in_missing_data(dates_list, incomplete_data, symbol, sector):
     #            len(complete_data),
     #            complete_data):
     #        return []
-    for i in complete_data:
-        print(i)
     return complete_data
 
 
@@ -393,14 +393,12 @@ async def __download_prices(session, db_conn, throttle, symbol, dates):
 
         prices = json.loads(prices)
         prices_tuples = __format_prices(prices, name, sector, dates)
-        for i in prices_tuples:
-            print(i)
-        #cursor = db_conn.cursor()
-        #query = 'INSERT INTO stock_prices' \
-        #        '  VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'
-        #psycopg2.extras.execute_batch(cursor, query, prices_tuples)
-        #db_conn.commit()
-        #cursor.close()
+        cursor = db_conn.cursor()
+        query = 'INSERT INTO stock_prices' \
+                '  VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'
+        extras.execute_batch(cursor, query, prices_tuples)
+        db_conn.commit()
+        cursor.close()
 
 
 async def __run_helper(db_conn, loop, symbols, dates):

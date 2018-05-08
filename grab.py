@@ -38,9 +38,8 @@ if __name__ == '__main__':
     with connect(**db_credentials) as conn:
 
         #  a list of tuples of the form (<symbol_name>, <sector_code>)
-        #TESTsymbol_names = symbols.run()
-        symbol_names = [('AAPL', 311)]
-
+        symbol_names = symbols.run()
+        print(symbol_names[0])
         #  get all valid open market dates within a range
         tz_offset = timezone(timedelta(hours=config.TZ))
         end = datetime.now(tz=tz_offset).date()
@@ -49,4 +48,4 @@ if __name__ == '__main__':
 
         #  asynchronously update the prices for all symbols in
         #  symbol_names in th db
-        price.run(conn, symbol_names, master_dates_list)
+        #price.run(conn, symbol_names, master_dates_list)

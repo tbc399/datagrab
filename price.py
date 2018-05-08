@@ -330,7 +330,7 @@ def __format_prices(prices_json, symbol, sector_code, dates):
     return complete_price_data
 
 
-def __get_missing_dates_range(db_conn, name, dates):
+def __get_missing_dates(db_conn, name, dates):
     """Get date range
 
     This guy gets the date range that we need to grab from Tradier.
@@ -343,12 +343,17 @@ def __get_missing_dates_range(db_conn, name, dates):
     db_dates = cursor.fetchall()
     cursor.close()
 
-    missing_dates = set(dates) - set(db_dates)
+    missing_dates = list(set(dates) - set(db_dates))
+    missing_dates.sort()
 
-    start_date = min(missing_dates)
-    end_date = max(missing_dates)
+    return missing_dates
 
-    return start_date, end_date
+
+def __remove_duplicates(prices, dates):
+    """Remove duplicate prices
+
+    """
+
 
 
 async def __download_prices(session, db_conn, throttle, symbol, dates):
@@ -359,7 +364,7 @@ async def __download_prices(session, db_conn, throttle, symbol, dates):
 
     name, sector = symbol
 
-    start_date, end_date = __get_missing_dates_range(db_conn, name, dates)
+    dates = __get_missing_dates(db_conn, name, dates)
 
     url = "https://{host}/{version}/markets/history".format(
         host=config.TRADIER_API_DOMAIN,
@@ -367,8 +372,8 @@ async def __download_prices(session, db_conn, throttle, symbol, dates):
     )
     query_params = {
         'symbol': name,
-        'start': str(start_date),
-        'end': str(end_date)
+        'start': str(dates[0]),
+        'end': str(dates[-1])
     }
     headers = {
         "Authorization": "Bearer {}".format(config.TRADIER_BEARER_TOKEN),
@@ -396,7 +401,8 @@ async def __download_prices(session, db_conn, throttle, symbol, dates):
 
         prices = json.loads(prices)
         prices_tuples = __format_prices(prices, name, sector, dates)
-        for i in prices_tuples:
+        unique_price_tuples = __remove_duplicates(prices, dates)
+        for i in unique_price_tuples:
             print(i)
         cursor = db_conn.cursor()
         query = 'INSERT INTO stock_prices' \

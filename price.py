@@ -226,8 +226,7 @@ def __fill_in_missing_data(dates_list, incomplete_data, symbol, sector):
     len_1 = len(dates_list)
     len_2 = len(incomplete_data)
     complete_data = []
-    for i in dates_list:
-        print(i)
+
     while ndx_1 < len_1 and ndx_2 < len_2:
         if dates_list[ndx_1] == incomplete_data[ndx_2][1]:
             complete_data.append(incomplete_data[ndx_2])
@@ -294,7 +293,7 @@ def __format_prices(prices_json, symbol, sector_code, dates):
             if dict_obj[key] == 'NaN':
                 dict_obj[key] = None
 
-    def to_cents(x): return int(x * 10)
+    def to_cents(x): return int(x * 100)
 
     #  format the Tradier price into [date, price] values
     price_data = [
@@ -302,10 +301,10 @@ def __format_prices(prices_json, symbol, sector_code, dates):
             symbol,
             datetime.strptime(day["date"], "%Y-%m-%d").date(),
             sector_code,
-            to_cents(day['open']),
-            to_cents(day['high']),
-            to_cents(day['low']),
-            to_cents(day['close']),
+            round(day['open'] * 100),
+            round(day['high'] * 100),
+            round(day['low'] * 100),
+            round(day['close'] * 100),
             day['volume']
         ) for day in returned_data
     ]
@@ -338,7 +337,7 @@ def __get_missing_dates(db_conn, name, dates):
 
     cursor = db_conn.cursor()
     cursor.execute('SELECT Date FROM stock_prices WHERE Name = %s', (name,))
-    db_dates = cursor.fetchall()
+    db_dates = [record[0] for record in cursor]
     cursor.close()
 
     missing_dates = list(set(dates) - set(db_dates))
@@ -348,13 +347,25 @@ def __get_missing_dates(db_conn, name, dates):
 
 
 def __remove_duplicates(prices, dates):
-    """Remove duplicate prices
+    """Remove duplicate price records
 
+    This function takes in prices which is a list of price record tuples
+    and builds a new list of tuples from it that contains on those records
+    whose dates/times are those listed in dates.
     """
 
+    dates_index = 0
+    unique_price_records = []
+
+    for tup in prices:
+        if dates_index < len(dates) and tup[1] == dates[dates_index]:
+            unique_price_records.append(tup)
+            dates_index += 1
+
+    return unique_price_records
 
 
-async def __download_prices(session, db_conn, throttle, symbol, dates):
+async def __download_prices(session, db_conn, throttle, symbol, valid_dates):
     """Download a symbol's prces
 
     TODO
@@ -362,7 +373,10 @@ async def __download_prices(session, db_conn, throttle, symbol, dates):
 
     name, sector = symbol
 
-    dates = __get_missing_dates(db_conn, name, dates)
+    dates = __get_missing_dates(db_conn, name, valid_dates)
+
+    if not dates:
+        return
 
     url = "https://{host}/{version}/markets/history".format(
         host=config.TRADIER_API_DOMAIN,
@@ -398,15 +412,14 @@ async def __download_prices(session, db_conn, throttle, symbol, dates):
     if prices is not None:
 
         prices = json.loads(prices)
-        prices_tuples = __format_prices(prices, name, sector, dates)
-        unique_price_tuples = __remove_duplicates(prices, dates)
-        for i in unique_price_tuples:
-            print(i)
+        price_tuples = __format_prices(prices, name, sector, dates)
+        unique_price_tuples = __remove_duplicates(price_tuples, dates)
+
         cursor = db_conn.cursor()
         query = 'INSERT INTO stock_prices' \
                 '(name, date, sector_code, open, high, low, close, volume)' \
                 '  VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'
-        extras.execute_batch(cursor, query, prices_tuples)
+        extras.execute_batch(cursor, query, unique_price_tuples)
         db_conn.commit()
         cursor.close()
 

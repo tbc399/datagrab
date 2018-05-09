@@ -108,12 +108,12 @@ def __split_into_sector(symbols):
     }
     
     symbol_sector_pairs = []
-    symbol_chunks = [symbols[i:i+20] for i in range()]
+    symbol_chunks = [symbols[i:i+100] for i in range(0, len(symbols), 100)]
 
-    for symbol_list in symbol_chunks:
+    for symbols in symbol_chunks:
 
         query = {
-            'symbols': symbol_list,
+            'symbols': ','.join(symbols),
         }
 
         response = requests.get(url, params=query, headers=headers)
@@ -122,7 +122,7 @@ def __split_into_sector(symbols):
             raise IOError(
                 "there was a network problem getting "
                 "the sectors of some symbols:\n'{symbols}'".format(
-                    symbols=','.join(symbol_list)
+                    symbols=','.join(symbols)
                 )
             )
 

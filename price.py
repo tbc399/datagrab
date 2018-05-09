@@ -21,16 +21,6 @@ from utils import get_valid_market_dates
 from datetime import datetime, timedelta
 
 
-__extended_dates_list = None
-
-#  Only stock symbols within this range will be considered.
-__MAX_PRICE = 10
-__MIN_PRICE = 0
-
-__MIN_VOLUME = 0
-__MAX_VOLUME = 1000000000
-
-
 #def __download_symbol_price_and_volume(symbol, dates_list, sector_dir, lag):
 def __download_symbol_price_and_volume(symbol, dates_list, lag):
     """Download a single symbol's closing price and volume
@@ -293,19 +283,17 @@ def __format_prices(prices_json, symbol, sector_code, dates):
             if dict_obj[key] == 'NaN':
                 dict_obj[key] = None
 
-    def to_cents(x): return int(x * 100)
-
     #  format the Tradier price into [date, price] values
     price_data = [
         (
             symbol,
             datetime.strptime(day["date"], "%Y-%m-%d").date(),
             sector_code,
-            round(day['open'] * 100),
-            round(day['high'] * 100),
-            round(day['low'] * 100),
-            round(day['close'] * 100),
-            day['volume']
+            round(day['open'] * 100) if day['open'] else None,
+            round(day['high'] * 100) if day['high'] else None,
+            round(day['low'] * 100) if day['low'] else None,
+            round(day['close'] * 100) if day['close'] else None,
+            day['volume'] if day['volume'] else None
         ) for day in returned_data
     ]
 
@@ -382,7 +370,7 @@ async def __download_prices(session, db_conn, throttle, symbol, valid_dates):
         host=config.TRADIER_API_DOMAIN,
         version=config.TRADIER_API_VERSION
     )
-    query_params = {
+    query = {
         'symbol': name,
         'start': str(dates[0]),
         'end': str(dates[-1])
@@ -395,10 +383,10 @@ async def __download_prices(session, db_conn, throttle, symbol, valid_dates):
     prices = None
     while True:
         try:
-            print('fetching {}'.format(name))
             async with throttle:
-                async with aiohttp.request('GET', url, params=query_params,
-                        headers=headers) as resp:
+                print('fetching {}'.format(name))
+                async with session.get(
+                        url, params=query, headers=headers) as resp:
                     prices = await resp.text()
                     if 'Quota Violation' in prices:
                         print('Quota violation...')
@@ -412,7 +400,12 @@ async def __download_prices(session, db_conn, throttle, symbol, valid_dates):
     if prices is not None:
 
         prices = json.loads(prices)
-        price_tuples = __format_prices(prices, name, sector, dates)
+        try:
+            print(name)
+            price_tuples = __format_prices(prices, name, sector, dates)
+        except TypeError as e:
+            print(json.dumps(prices, indent=2))
+            print(e)
         unique_price_tuples = __remove_duplicates(price_tuples, dates)
 
         cursor = db_conn.cursor()
@@ -428,7 +421,7 @@ async def __run_helper(db_conn, loop, symbols, dates):
     """Dole out price requests"""
 
     #  throttle the requests since Tradier has a rate limit
-    throttle = Throttler(rate_limit=5)
+    throttle = Throttler(rate_limit=2)
 
     async with aiohttp.ClientSession(loop=loop) as session:
         tasks = [__download_prices(

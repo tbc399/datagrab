@@ -11,9 +11,10 @@ other modules
 
 import os
 import json
-from datetime import timedelta, datetime
 import config
 import requests
+import pytz
+from datetime import timedelta, datetime
 
 
 #def write_out_symbol_data(symbol, data, sector_dir, description=""):
@@ -86,6 +87,27 @@ def __month_year_iter(start_month, start_year, end_month, end_year):
     for ym in range(ym_start, ym_end):
         y, m = divmod(ym, 12)
         yield y, m+1
+
+def get_start_end_dates(config):
+    """Return the start and end date
+
+    Determine the start date based on the configuration provided
+    and the end date by what the current time is in relation to the
+    closing of the markets
+    """
+
+    tz_offset = pytz.timezone(config.TZ)
+    now = datetime.now(tz=tz_offset)
+    market_close = now.replace(hour=16, minute=0)
+
+    if now > market_close:
+        end = now.date()
+    else:
+        end = (now - timedelta(hours=24)).date()
+
+    start = datetime.strptime(config.START_DATE, "%Y-%m-%d").date()
+
+    return start, end
 
 
 def get_valid_market_dates(start_date, end_date):

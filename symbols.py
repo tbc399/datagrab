@@ -13,6 +13,7 @@ into their respective sectors.
 import json
 import requests
 import config
+import string
 
 
 MORNINGSTAR_SECTOR_CODES = {
@@ -53,7 +54,7 @@ def _get_symbols(character):
     that character. For now, it only pulls from NASDAQ
     and NYSE.
     """
-    print(character)
+
     if 'a' > character.lower() > 'z':
         raise ValueError("'{}' is not a character".format(character))
 
@@ -79,7 +80,6 @@ def _get_symbols(character):
             "the symbols for character {char}".format(char=character)
         )
 
-    print(character, "{}/{}".format(response.headers['X-Ratelimit-Used'], response.headers['X-Ratelimit-Available']))
     json_response = json.loads(response.text)
 
     #  list of returned symbols
@@ -91,28 +91,32 @@ def _get_symbols(character):
             yield symbol
 
 
-def _split_into_sector(symbol_lists):
+def __split_into_sector(symbols):
     """Split each symbol into its sector
     
     TODO
     """
 
-    uri = "https://{host}/{version}/markets/fundamentals/company".format(
-        host=TRADIER_API_DOMAIN,
-        version=TRADIER_BETA_VERSION
+    url = "https://{host}/{version}/markets/fundamentals/company".format(
+        host=config.TRADIER_API_DOMAIN,
+        version=config.TRADIER_BETA_VERSION
     )
 
-    sector_mapping = {}
+    headers = {
+        "Authorization": "Bearer {}".format(config.TRADIER_BEARER_TOKEN),
+        "Accept": "application/json"
+    }
+    
+    symbol_sector_pairs = []
+    symbol_chunks = [symbols[i:i+20] for i in range()]
 
-    for symbol_list in symbol_lists:
+    for symbol_list in symbol_chunks:
 
-        query = "symbols={}".format(','.join(symbol_list))
-        url = "{uri}?{query}".format(
-            uri=uri,
-            query=query
-        )
+        query = {
+            'symbols': symbol_list,
+        }
 
-        response = requests.get(url, headers=HEADERS)
+        response = requests.get(url, params=query, headers=headers)
 
         if response.status_code != 200:
             raise IOError(
@@ -145,24 +149,10 @@ def _split_into_sector(symbol_lists):
                 print("WARNING: could not get a json field '{}'".format(error))
                 print(json.dumps(entry, indent=2))
                 continue
-
-            if sector_code in sector_mapping:
-                sector_mapping[sector_code]['symbols'].append(symbol)
             else:
-                try:
-                    sector_name = MORNINGSTAR_SECTOR_CODES[sector_code]
-                except KeyError as e:
-                    print("WARNING: sector code {code} is not legit!".format(
-                        code=sector_code
-                    ))
-                    sector_name = "Unknown"
+                symbol_sector_pairs.append((symbol, sector_code))
 
-                sector_mapping[sector_code] = {
-                    "name": sector_name,
-                    "symbols": [symbol]
-                }
-
-    return sector_mapping
+    return symbol_sector_pairs
 
 
 def run():
@@ -172,22 +162,11 @@ def run():
     """
 
     symbols_list = []
-    #symbol_lists = [[]]
-    #index = 0
 
-    for char in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
-
+    for char in string.ascii_uppercase:
         for symbol in _get_symbols(char):
             symbols_list.append(symbol)
-            #if len(symbol_lists[index]) <= QUERY_SYMBOL_COUNT:
-            #    symbol_lists[index].append(symbol)
-            #else:
-            #    symbol_lists.append([symbol])
-            #    index += 1
 
-    #sector_mapping = _split_into_sector(symbol_lists)
+    symbol_sector_pairs = __split_into_sector(symbols_list)
 
-    #with open(os.path.join(DATA_DOWNLOAD_DIR, SECTOR_MAPPING_FILE), 'w') as f:
-    #    json.dump(sector_mapping, f, indent=2)
-
-    return symbols_list
+    return symbol_sector_pairs

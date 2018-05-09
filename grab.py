@@ -11,10 +11,8 @@ This is the driver for datagrab
 """
 
 
-from requests import ConnectionError
-from utils import get_valid_market_dates
+from utils import get_start_end_dates, get_valid_market_dates
 import config
-from datetime import datetime, timedelta, timezone
 import symbols
 import price
 from psycopg2 import connect
@@ -39,13 +37,11 @@ if __name__ == '__main__':
 
         #  a list of tuples of the form (<symbol_name>, <sector_code>)
         symbol_names = symbols.run()
-        print(symbol_names[0])
+
         #  get all valid open market dates within a range
-        tz_offset = timezone(timedelta(hours=config.TZ))
-        end = datetime.now(tz=tz_offset).date()
-        start = datetime.strptime(config.START_DATE, "%Y-%m-%d").date()
+        start, end = get_start_end_dates(config)
         master_dates_list = get_valid_market_dates(start, end)
 
         #  asynchronously update the prices for all symbols in
         #  symbol_names in th db
-        #price.run(conn, symbol_names, master_dates_list)
+        price.run(conn, symbol_names, master_dates_list)

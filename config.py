@@ -14,7 +14,8 @@ import json
 TRADIER_API_DOMAIN = None
 TRADIER_API_VERSION = None
 TRADIER_BETA_VERSION = None
-TRADIER_BEARER_TOKEN = None
+TRADIER_SANDBOX_TOKEN = None
+TRADIER_API_TOKEN = None
 QUERY_SYMBOL_COUNT = None
 START_DATE = None
 DB_NAME = None
@@ -33,7 +34,8 @@ def load(file_name):
     global TRADIER_API_DOMAIN
     global TRADIER_API_VERSION
     global TRADIER_BETA_VERSION
-    global TRADIER_BEARER_TOKEN
+    global TRADIER_SANDBOX_TOKEN
+    global TRADIER_API_TOKEN
     global QUERY_SYMBOL_COUNT
     global START_DATE
     global DB_NAME
@@ -49,7 +51,8 @@ def load(file_name):
     TRADIER_API_DOMAIN = j['tradier_api_domain']
     TRADIER_API_VERSION = j['tradier_api_version']
     TRADIER_BETA_VERSION = j['tradier_beta_version']
-    TRADIER_BEARER_TOKEN = j['tradier_bearer_token']
+    TRADIER_SANDBOX_TOKEN = j['tradier_sandbox_token']
+    TRADIER_API_TOKEN = j['tradier_api_token']
     QUERY_SYMBOL_COUNT = j['query_symbol_count']
     START_DATE = j['start_date']
     DB_NAME = j['db_name']

@@ -376,7 +376,7 @@ async def __download_prices(session, db_conn, throttle, symbol, valid_dates):
         'end': str(dates[-1])
     }
     headers = {
-        "Authorization": "Bearer {}".format(config.TRADIER_BEARER_TOKEN),
+        "Authorization": "Bearer {}".format(config.TRADIER_API_TOKEN),
         "Accept": "application/json"
     }
 

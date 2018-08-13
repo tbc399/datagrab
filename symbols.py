@@ -68,12 +68,13 @@ def _get_symbols(character):
         'types': 'stock'
     }
     headers = {
-        "Authorization": "Bearer {}".format(config.TRADIER_BEARER_TOKEN),
+        "Authorization": "Bearer {}".format(config.TRADIER_API_TOKEN),
         "Accept": "application/json"
     }
 
     response = requests.get(url, params=query, headers=headers)
 
+    print(url)
     if response.status_code != 200:
         raise IOError(
             "there was a network problem getting "
@@ -103,7 +104,7 @@ def __split_into_sector(symbols):
     )
 
     headers = {
-        "Authorization": "Bearer {}".format(config.TRADIER_BEARER_TOKEN),
+        "Authorization": "Bearer {}".format(config.TRADIER_API_TOKEN),
         "Accept": "application/json"
     }
     

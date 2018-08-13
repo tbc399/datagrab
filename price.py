@@ -353,7 +353,7 @@ def __remove_duplicates(prices, dates):
     return unique_price_records
 
 
-async def __download_prices(session, db_conn, throttle, symbol, valid_dates):
+def __download_prices(session, db_conn, symbol, valid_dates):
     """Download a symbol's prces
 
     TODO
@@ -376,7 +376,57 @@ async def __download_prices(session, db_conn, throttle, symbol, valid_dates):
         'end': str(dates[-1])
     }
     headers = {
-        "Authorization": "Bearer {}".format(config.TRADIER_BEARER_TOKEN),
+        "Authorization": "Bearer {}".format(config.TRADIER_API_TOKEN),
+        "Accept": "application/json"
+    }
+
+    resp = session.get(url, params=query, headers=headers)
+
+    prices = resp.json()
+
+    try:
+        print(name)
+        price_tuples = __format_prices(prices, name, sector, dates)
+    except TypeError as e:
+        print(json.dumps(prices, indent=2))
+        print(e)
+        return
+
+    unique_price_tuples = __remove_duplicates(price_tuples, dates)
+
+    cursor = db_conn.cursor()
+    query = 'INSERT INTO stock_prices' \
+            '(name, date, sector_code, open, high, low, close, volume)' \
+            '  VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'
+    extras.execute_batch(cursor, query, unique_price_tuples)
+    db_conn.commit()
+    cursor.close()
+
+
+async def __download_prices_async(session, db_conn, throttle, symbol, valid_dates):
+    """Download a symbol's prces
+
+    TODO
+    """
+
+    name, sector = symbol
+
+    dates = __get_missing_dates(db_conn, name, valid_dates)
+
+    if not dates:
+        return
+
+    url = "https://{host}/{version}/markets/history".format(
+        host=config.TRADIER_API_DOMAIN,
+        version=config.TRADIER_API_VERSION
+    )
+    query = {
+        'symbol': name,
+        'start': str(dates[0]),
+        'end': str(dates[-1])
+    }
+    headers = {
+        "Authorization": "Bearer {}".format(config.TRADIER_API_TOKEN),
         "Accept": "application/json"
     }
 
@@ -395,6 +445,9 @@ async def __download_prices(session, db_conn, throttle, symbol, valid_dates):
                         break
         except aiohttp.connector.ClientConnectorError as e:
             print('Connection error. Waiting ...')
+            await asyncio.sleep(2)
+        except asyncio.TimeoutError as e:
+            print('TimeoutError: {}'.format(e))
             await asyncio.sleep(2)
 
     if prices is not None:
@@ -421,10 +474,10 @@ async def __run_helper(db_conn, loop, symbols, dates):
     """Dole out price requests"""
 
     #  throttle the requests since Tradier has a rate limit
-    throttle = Throttler(rate_limit=2)
+    throttle = Throttler(rate_limit=1)
 
     async with aiohttp.ClientSession(loop=loop) as session:
-        tasks = [__download_prices(
+        tasks = [__download_prices_async(
             session, db_conn, throttle, name, dates) for name in symbols]
         await asyncio.gather(*tasks)
 
@@ -435,6 +488,10 @@ def run(db_conn, symbols, dates):
     TODO
     """
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(__run_helper(db_conn, loop, symbols, dates))
-    loop.close()
+    #loop = asyncio.get_event_loop()
+    #loop.run_until_complete(__run_helper(db_conn, loop, symbols, dates))
+    #loop.close()
+
+    with requests.Session() as session:
+        for symbol in symbols:
+            __download_prices(session, db_conn, symbol, dates)

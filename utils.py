@@ -136,7 +136,7 @@ def get_valid_market_dates(start_date, end_date):
             'month': month
         }
         headers = {
-            "Authorization": "Bearer {}".format(config.TRADIER_BEARER_TOKEN),
+            "Authorization": "Bearer {}".format(config.TRADIER_API_TOKEN),
             "Accept": "application/json"
         }
         response = requests.get(url, params=query, headers=headers)

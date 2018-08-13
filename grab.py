@@ -17,6 +17,7 @@ import symbols
 import price
 from psycopg2 import connect
 import sys
+import time
 
 
 if __name__ == '__main__':
@@ -33,6 +34,9 @@ if __name__ == '__main__':
             password=config.DB_PASSWORD,
             host=config.DB_HOST
         )
+
+    start_time = time.time()
+
     with connect(**db_credentials) as conn:
 
         #  a list of tuples of the form (<symbol_name>, <sector_code>)
@@ -45,3 +49,7 @@ if __name__ == '__main__':
         #  asynchronously update the prices for all symbols in
         #  symbol_names in th db
         price.run(conn, symbol_names, master_dates_list)
+
+    end_time = time.time()
+    duration = (end_time - start_time) / 60
+    print('Run Duration: {}'.format(duration))

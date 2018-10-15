@@ -11,6 +11,7 @@ given set of symbols.
 
 
 import requests
+import logging
 import aiohttp
 import asyncio
 import config
@@ -19,159 +20,9 @@ from psycopg2 import extras
 from asyncio_throttle import Throttler
 from utils import get_valid_market_dates
 from datetime import datetime, timedelta
+import time
 
-
-#def __download_symbol_price_and_volume(symbol, dates_list, sector_dir, lag):
-def __download_symbol_price_and_volume(symbol, dates_list, lag):
-    """Download a single symbol's closing price and volume
-
-    TODO
-    """
-
-    print("Downloading price and volume for {sym}").format(sym=symbol)
-
-    global __extended_dates_list
-
-    if not __extended_dates_list:
-        __extended_dates_list = get_valid_market_dates(
-            dates_list[0] - timedelta(days=1), lag
-        )
-        __extended_dates_list.extend(list(dates_list))
-
-    start_date = __extended_dates_list[0].strftime("%Y-%m-%d")
-    end_date = __extended_dates_list[-1].strftime("%Y-%m-%d")
-
-    uri = "https://{host}/{version}/markets/history".format(
-        host=TRADIER_API_DOMAIN,
-        version=TRADIER_API_VERSION
-    )
-    query = "symbol={symb}&start={start}&end={end}".format(
-        symb=symbol,
-        start=start_date,
-        end=end_date
-    )
-    url = "{uri}?{query}".format(
-        uri=uri,
-        query=query
-    )
-
-    response = requests.get(url, headers=__HEADERS)
-
-    if response.status_code != 200:
-        raise IOError(
-            "there was a network problem getting "
-            "the historical pricing from symbol {sym}".format(sym=symbol)
-        )
-
-    json_response = response.json()
-
-    if not json_response:
-        print("WARNING: could not download data for symbol {}").format(symbol)
-        print("WARNING: status code {code}: {body}".format(
-            code=response.status_code,
-            body=response.text
-        ))
-        return
-
-    if not json_response["history"] or not json_response["history"]["day"]:
-        print("WARNING: no history could be found for symbol {}").format(symbol)
-        return
-
-    returned_data = json_response["history"]["day"]
-
-    if not __check_bounds(returned_data):
-        print("WARNING: failed bounds check for symbol {}").format(symbol)
-        return
-
-    #  format the Tradier price into [date, price] values
-    price_data = [
-        [
-            datetime.strptime(day["date"], "%Y-%m-%d").date(),
-            day["close"]
-        ] for day in returned_data if day["close"] != "NaN"
-    ]
-
-    #  fill in any holes in the price data
-    complete_price_data = __fill_in_missing_data(
-        __extended_dates_list,
-        price_data
-    )
-
-    if not complete_price_data:
-        #  holes in the data are too big, so skip
-        print("WARNING: {} has too many missing data points. skipping").format(
-            symbol
-        )
-        return
-
-    #  normalize the price data
-    normalized_price_data = [
-        normalize(x, __MIN_PRICE, __MAX_PRICE) for x in complete_price_data
-    ]
-
-    #  write out the base symbol (without any lag)
-    price = normalized_price_data[lag:DATA_RANGE + lag]
-
-    write_out_symbol_data(
-        symbol,
-        price,
-        # sector_dir,
-        description="The closing price"
-    )
-
-    for i in xrange(1, lag):
-        price = normalized_price_data[lag - i:DATA_RANGE + lag - i]
-        write_out_dependent_data(
-            "Lagging_{}".format(i),
-            symbol,
-            price,
-            #sector_dir,
-            description="The closing price lagging by {} day(s)".format(i)
-        )
-
-    #  format the volume data into [date, volume] entries
-    volume_data = [
-        [
-            datetime.strptime(day["date"], "%Y-%m-%d").date(),
-            day["volume"]
-        ] for day in returned_data if day["close"] != "NaN"
-    ]
-
-    #  fill in any holes in the volume data
-    complete_volume_data = __fill_in_missing_data(
-        __extended_dates_list,
-        volume_data
-    )
-
-    normalized_volume_data = [
-        normalize(x, __MIN_VOLUME, __MAX_VOLUME)
-        for x in complete_volume_data[lag:DATA_RANGE + lag]
-    ]
-
-    write_out_dependent_data(
-        "Volume",
-        symbol,
-        normalized_volume_data,
-        #sector_dir,
-        description="The daily volume"
-    )
-
-
-def __check_bounds(tradier_data):
-    """Check price and volume bounds
-
-    TODO
-    """
-
-    for entry in tradier_data:
-        price = entry['close']
-        vol = entry['volume']
-        if price < __MIN_PRICE or price > __MAX_PRICE:
-            return False
-        if vol < __MIN_VOLUME or vol > __MAX_VOLUME:
-            return False
-
-    return True
+log = logging.getLogger(__name__)
 
 
 def __patch_data(start_ndx, end_ndx, data):
@@ -342,15 +193,101 @@ def __remove_duplicates(prices, dates):
     whose dates/times are those listed in dates.
     """
 
-    dates_index = 0
-    unique_price_records = []
+    dates_set = set(dates)
 
-    for tup in prices:
-        if dates_index < len(dates) and tup[1] == dates[dates_index]:
-            unique_price_records.append(tup)
-            dates_index += 1
+    return [x for x in prices if x[1] in dates_set]
 
-    return unique_price_records
+
+def __download_yahoo_prices(session, symbol, dates):
+    """Download stock prices from Yahoo
+
+    Downloads stock price info with volume from Yahoo
+
+    :param session: the Requests Session object
+    :param symbol: a tuple of the stock name and sector respectively
+    :param valid_dates: a list of the range of dates of interest
+    :return: a list of tuples of the prices
+    """
+
+    print('Fetching prices from Yahoo')
+    print(dates[0], dates[-1])
+
+    name, sector = symbol
+
+    url = (
+        'https://query1.finance.yahoo.com/v8/finance/chart/{symbol}'.format(
+            symbol=name
+        )
+    )
+    query = {
+        'formatted': True,
+        'lang': 'en-US',
+        'region': 'US',
+        'interval': '1d',
+        'events': 'div|split',
+        'period1': str(int(time.mktime(dates[0].timetuple()))),
+        'period2': str(int(time.mktime(dates[-1].timetuple())))
+    }
+
+    resp = session.get(url, params=query).json()
+
+    try:
+        timestamps = resp['chart']['result'][0]['timestamp']
+    except Exception:
+        print('ERROR')
+        print(json.dumps(resp, indent=2))
+        return
+    except KeyError:
+        print('Error in getting Yahoo prices')
+        return
+    except IndexError:
+        print('Error in getting Yahoo prices')
+        return
+    except TypeError:
+        print('Error in getting Yahoo prices')
+        return
+
+    lows = [
+        round(x * 100) if x is not None else None for x in
+        resp['chart']['result'][0]['indicators']['quote'][0]['low']
+    ]
+    highs = [
+        round(x * 100) if x is not None else None for x in
+        resp['chart']['result'][0]['indicators']['quote'][0]['high']
+    ]
+    closes = [
+        round(x * 100) if x is not None else None for x in
+        resp['chart']['result'][0]['indicators']['quote'][0]['close']
+    ]
+    opens = [
+        round(x * 100) if x is not None else None for x in
+        resp['chart']['result'][0]['indicators']['quote'][0]['open']
+    ]
+    vols = resp['chart']['result'][0]['indicators']['quote'][0]['volume']
+
+    #  list of name and sector for zipping
+    names = [name] * len(vols)
+    sectors = [sector] * len(vols)
+
+    dates = [datetime.fromtimestamp(x).date() for x in timestamps]
+
+    return list(zip(names, dates, sectors, opens, highs, lows, closes, vols))
+
+
+def __prices_complete(price_tuples):
+    """Determine if prices complete
+
+    Runs through a list of pricing tuples and return True if there are
+    no "holes" in the data, i.e. no null values
+
+    :param price_tuples: a list of price tuples
+    :return: True if no values in the tuples are None
+    """
+
+    if not price_tuples:
+        return False
+
+    return all(all((x is not None) for x in pt) for pt in price_tuples)
 
 
 def __download_prices(session, db_conn, symbol, valid_dates):
@@ -390,14 +327,22 @@ def __download_prices(session, db_conn, symbol, valid_dates):
     except TypeError as e:
         print(json.dumps(prices, indent=2))
         print(e)
+        price_tuples = []
+
+    if not __prices_complete(price_tuples):
+        price_tuples = __download_yahoo_prices(session, symbol, valid_dates)
+
+    if not price_tuples:
         return
 
     unique_price_tuples = __remove_duplicates(price_tuples, dates)
 
     cursor = db_conn.cursor()
-    query = 'INSERT INTO stock_prices' \
-            '(name, date, sector_code, open, high, low, close, volume)' \
-            '  VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'
+    query = (
+        'INSERT INTO stock_prices'
+        '(name, date, sector_code, open, high, low, close, volume)'
+        '  VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'
+    )
     extras.execute_batch(cursor, query, unique_price_tuples)
     db_conn.commit()
     cursor.close()

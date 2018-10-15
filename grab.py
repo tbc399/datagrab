@@ -18,6 +18,7 @@ import price
 from psycopg2 import connect
 import sys
 import time
+import requests
 
 
 if __name__ == '__main__':
@@ -46,7 +47,7 @@ if __name__ == '__main__':
         start, end = get_start_end_dates(config)
         master_dates_list = get_valid_market_dates(start, end)
 
-        #  asynchronously update the prices for all symbols in
+        #  update the prices for all symbols in
         #  symbol_names in th db
         price.run(conn, symbol_names, master_dates_list)
 

@@ -31,7 +31,6 @@ MORNINGSTAR_SECTOR_CODES = {
 }
 
 
-
 def _validate_symbol(symbol):
     """Validate a stock symbol
 
@@ -48,7 +47,7 @@ def _validate_symbol(symbol):
 
 def _get_symbols(character):
     """Grabs stock symbols by character
-    
+
     This function takes in a single alphabetic character
     and generates a list of stock symbols that begin with
     that character. For now, it only pulls from NASDAQ
@@ -94,7 +93,7 @@ def _get_symbols(character):
 
 def __split_into_sector(symbols):
     """Split each symbol into its sector
-    
+
     TODO
     """
 
@@ -107,7 +106,7 @@ def __split_into_sector(symbols):
         "Authorization": "Bearer {}".format(config.TRADIER_API_TOKEN),
         "Accept": "application/json"
     }
-    
+
     symbol_sector_pairs = []
     symbol_chunks = [symbols[i:i+100] for i in range(0, len(symbols), 100)]
 
@@ -158,7 +157,7 @@ def __split_into_sector(symbols):
 
 def run():
     """Entry point for symbols
-    
+
     TODO
     """
 

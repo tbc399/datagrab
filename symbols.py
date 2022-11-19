@@ -10,10 +10,16 @@ into their respective sectors.
 """
 
 
+import click
+import pathlib
+import httpx
+import csv
 import json
 import requests
 import config
 import string
+import tiingo
+import re
 
 
 MORNINGSTAR_SECTOR_CODES = {
@@ -170,3 +176,64 @@ def run():
     symbol_sector_pairs = __split_into_sector(symbols_list)
 
     return symbol_sector_pairs
+
+
+#@click.command(name='symbols')
+def ies_symbols():
+
+    store_path = pathlib.Path.home() / '.zipline/symbols'
+    
+    if not store_path.exists():
+        store_path.mkdir(parents=True)
+
+    with httpx.Client() as client:
+        response = client.get(
+            url='https://sandbox.iexapis.com/v1/ref-data/symbols',
+            #url='https://cloud.iexapis.com/v1/ref-data/symbols',
+            params={'token': 'Tpk_c379f68921904f84966f5f0b275a278f'}
+            #params={'token': 'pk_bc531c74bd5a4a4d92c01cbe14115938'}
+        )
+
+    if response.status_code != httpx.codes.OK:
+        raise IOError(
+            f'failed to get symbols from IEX with a status code of '
+            f'{response.status_code}: {response.text}'
+        )
+
+    symbols_ = [x for x in response.json() if x['type'] == 'cs']
+    
+    with open(store_path / 'iex.csv', 'w') as f:
+        csv_writer = csv.writer(f)
+        csv_writer.writerows([(x['symbol'], x['name']) for x in symbols_])
+
+
+@click.command(name='symbols')
+def tiingo_symbols():
+    
+    store_path = pathlib.Path.home() / '.zipline/symbols'
+    
+    if not store_path.exists():
+        store_path.mkdir(parents=True)
+    
+    client = tiingo.TiingoClient(
+        config={
+            'api_key': '6401083a570395b73daa90d694e19a07bf9920e7'
+        }
+    )
+
+    desirable_characters = string.ascii_letters + string.digits
+    
+    symbols = [
+        x for x in client.list_stock_tickers()
+        if x['exchange'] in ('NYSE', 'NASDAQ', 'AMEX')
+        and x['assetType'].lower() == 'stock'
+        and x['startDate']
+        and x['endDate']
+        and all([y in desirable_characters for y in x['ticker']])
+    ]
+    
+    print(len(symbols))
+    
+    with open(store_path / 'tiingo.csv', 'w') as f:
+        csv_writer = csv.writer(f)
+        csv_writer.writerows([(x['ticker'], x['startDate'], x['endDate']) for x in symbols])

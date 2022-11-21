@@ -3,4 +3,6 @@
 *.swp
 config.json
 *.swo
-venv
+.python-version
+*.bz2
+*.egg-info

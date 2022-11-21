@@ -12,7 +12,6 @@ into their respective sectors.
 
 import click
 import pathlib
-import httpx
 import csv
 import json
 import requests
@@ -207,7 +206,7 @@ def ies_symbols():
         csv_writer.writerows([(x['symbol'], x['name']) for x in symbols_])
 
 
-@click.command(name='symbols')
+@click.command(name='symbols', help='Download the latest list of symbols available at Tiingo.')
 def tiingo_symbols():
     
     store_path = pathlib.Path.home() / '.zipline/symbols'

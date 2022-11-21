@@ -107,10 +107,11 @@ def date_clean():
                 
 @click.command()
 @click.option('--compressed', is_flag=True)
-def tiingo_json_to_csv(compressed):
+@click.option('-f', '--frequency', type=click.Choice(['daily', '5min'], case_sensitive=False))
+def tiingo_json_to_csv(compressed, frequency):
     
-    json_dir = pathlib.Path.home() / '.zipline/json/tiingo/daily'
-    clean_dir = pathlib.Path().home() / '.zipline/csv/tiingo/raw-daily'
+    json_dir = pathlib.Path.home() / f'.zipline/json/tiingo/{frequency}'
+    clean_dir = pathlib.Path().home() / f'.zipline/csv/tiingo/raw-{frequency}'
     
     extension = '*.json'
     open_func = open
@@ -120,8 +121,8 @@ def tiingo_json_to_csv(compressed):
         open_func = bz2.open
         open_mode = 'rt'
 
-    #files = json_dir.glob(extension)
-    files = json_dir.glob('SPY.json')
+    files = json_dir.glob(extension)
+    # files = json_dir.glob('SPY.json')
 
     for i, file in enumerate(files):
         with open_func(file, open_mode) as f:
@@ -157,6 +158,7 @@ cli.add_command(datefix)
 cli.add_command(minmax_dates)
 cli.add_command(date_clean)
 cli.add_command(tiingo_json_to_csv)
+cli.add_command(history.yahoo_history)
 
 
 if __name__ == '__main__':

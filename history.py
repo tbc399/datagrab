@@ -1,6 +1,6 @@
 import click
+import yfinance
 import pathlib
-from iexfinance.stocks import get_historical_data
 import tiingo
 import csv
 import datetime
@@ -64,11 +64,13 @@ def iex_history():
 
 
 @click.command()
-def tiingo_history():
+@click.option('-f', '--frequency', type=click.Choice(['daily', '5min'], case_sensitive=False))
+def tiingo_history(frequency):
     
     zipline_dir = pathlib.Path.home() / '.zipline/'
     symbols_dir = zipline_dir / 'symbols/'
-    daily_csv_dir = zipline_dir / 'json/tiingo/daily'
+    
+    json_dir = zipline_dir / f'json/tiingo/{frequency}'
     
     with open(symbols_dir / 'tiingo.csv', 'r') as f:
         csv_reader = csv.reader(f)
@@ -87,16 +89,34 @@ def tiingo_history():
             historical_prices = client.get_ticker_price(
                 symbol,
                 startDate=start_date,
-                endDate=end_date
+                endDate=end_date,
+                frequency=frequency
             )
         except Exception as e:
             click.echo(f'Failed for symbol {symbol}')
             continue
         
-        if not daily_csv_dir.exists():
-            daily_csv_dir.mkdir(parents=True)
+        if not json_dir.exists():
+            json_dir.mkdir(parents=True)
 
-        with open(daily_csv_dir / f'{symbol}.json', 'w') as f:
+        with open(json_dir / f'{symbol}.json', 'w') as f:
             json.dump(historical_prices, f)
         
         click.echo(f'finished symbol {symbol}')
+
+
+@click.command()
+@click.option('-f', '--frequency', type=click.Choice(['5m'], case_sensitive=True))
+def yahoo_history(frequency):
+    
+    zipline_dir = pathlib.Path.home() / '.zipline/'
+    symbols_dir = zipline_dir / 'symbols/'
+
+    json_dir = zipline_dir / f'json/tiingo/{frequency}'
+
+    with open(symbols_dir / 'tiingo.csv', 'r') as f:
+        csv_reader = csv.reader(f)
+        symbols = [row for row in csv_reader]
+        
+    data = yfinance.download('AAPL', period='60d', interval='5m')
+    print(data)

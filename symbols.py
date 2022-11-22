@@ -1,4 +1,4 @@
-"""
+'''
 Copyright: Travis Cammack 2017
 Original Author: Travis Cammack
 Create Date: 5/6/2017
@@ -7,7 +7,7 @@ Contributors:
 
 This module grabs symbols from NYSE and NASDAQ and puts them
 into their respective sectors.
-"""
+'''
 
 
 import click
@@ -37,11 +37,11 @@ MORNINGSTAR_SECTOR_CODES = {
 
 
 def _validate_symbol(symbol):
-    """Validate a stock symbol
+    '''Validate a stock symbol
 
     Return true if this symbol doesn't have any funky stuff going
     on with it like ABDn:BXRT or something like that
-    """
+    '''
 
     for c in symbol:
         if c < 'A' or c > 'Z':
@@ -51,29 +51,24 @@ def _validate_symbol(symbol):
 
 
 def _get_symbols(character):
-    """Grabs stock symbols by character
+    '''Grabs stock symbols by character
 
     This function takes in a single alphabetic character
     and generates a list of stock symbols that begin with
     that character. For now, it only pulls from NASDAQ
     and NYSE.
-    """
+    '''
 
     if 'a' > character.lower() > 'z':
-        raise ValueError("'{}' is not a character".format(character))
+        raise ValueError('"{}" is not a character'.format(character))
 
-    url = "https://{host}/{version}/markets/lookup".format(
-        host=config.TRADIER_API_DOMAIN,
-        version=config.TRADIER_API_VERSION
+    url = 'https://{host}/{version}/markets/lookup'.format(
+        host=config.TRADIER_API_DOMAIN, version=config.TRADIER_API_VERSION
     )
-    query = {
-        'q': character,
-        'exchanges': 'N,Q',
-        'types': 'stock'
-    }
+    query = {'q': character, 'exchanges': 'N,Q', 'types': 'stock'}
     headers = {
-        "Authorization": "Bearer {}".format(config.TRADIER_API_TOKEN),
-        "Accept": "application/json"
+        'Authorization': 'Bearer {}'.format(config.TRADIER_API_TOKEN),
+        'Accept': 'application/json',
     }
 
     response = requests.get(url, params=query, headers=headers)
@@ -81,8 +76,8 @@ def _get_symbols(character):
     print(url)
     if response.status_code != 200:
         raise IOError(
-            "there was a network problem getting "
-            "the symbols for character {char}".format(char=character)
+            'there was a network problem getting '
+            'the symbols for character {char}'.format(char=character)
         )
 
     json_response = json.loads(response.text)
@@ -97,23 +92,22 @@ def _get_symbols(character):
 
 
 def __split_into_sector(symbols):
-    """Split each symbol into its sector
+    '''Split each symbol into its sector
 
     TODO
-    """
+    '''
 
-    url = "https://{host}/{version}/markets/fundamentals/company".format(
-        host=config.TRADIER_API_DOMAIN,
-        version=config.TRADIER_BETA_VERSION
+    url = 'https://{host}/{version}/markets/fundamentals/company'.format(
+        host=config.TRADIER_API_DOMAIN, version=config.TRADIER_BETA_VERSION
     )
 
     headers = {
-        "Authorization": "Bearer {}".format(config.TRADIER_API_TOKEN),
-        "Accept": "application/json"
+        'Authorization': 'Bearer {}'.format(config.TRADIER_API_TOKEN),
+        'Accept': 'application/json',
     }
 
     symbol_sector_pairs = []
-    symbol_chunks = [symbols[i:i+100] for i in range(0, len(symbols), 100)]
+    symbol_chunks = [symbols[i : i + 100] for i in range(0, len(symbols), 100)]
 
     for symbols in symbol_chunks:
 
@@ -125,8 +119,8 @@ def __split_into_sector(symbols):
 
         if response.status_code != 200:
             raise IOError(
-                "there was a network problem getting "
-                "the sectors of some symbols:\n'{symbols}'".format(
+                'there was a network problem getting '
+                'the sectors of some symbols:\n"{symbols}"'.format(
                     symbols=','.join(symbols)
                 )
             )
@@ -137,21 +131,20 @@ def __split_into_sector(symbols):
 
             symbol = entry['request']
 
-            if "error" in entry:
+            if 'error' in entry:
                 msg = 'WARNING: Tradier error in getting symbol {}: {}'
-                print(msg.format(symbol, entry["error"]))
+                print(msg.format(symbol, entry['error']))
                 continue
 
             try:
-                sector_code = entry['results'][0]['tables'][
-                    'asset_classification']['morningstar_sector_code']
+                sector_code = entry['results'][0]['tables']['asset_classification'][
+                    'morningstar_sector_code'
+                ]
             except TypeError:
-                print("WARNING: no sector info on {sym}. Skipping".format(
-                    sym=symbol
-                ))
+                print('WARNING: no sector info on {sym}. Skipping'.format(sym=symbol))
                 continue
             except KeyError as error:
-                print("WARNING: could not get a json field '{}'".format(error))
+                print('WARNING: could not get a json field "{}"'.format(error))
                 print(json.dumps(entry, indent=2))
                 continue
             else:
@@ -161,10 +154,10 @@ def __split_into_sector(symbols):
 
 
 def run():
-    """Entry point for symbols
+    '''Entry point for symbols
 
     TODO
-    """
+    '''
 
     symbols_list = []
 
@@ -177,20 +170,20 @@ def run():
     return symbol_sector_pairs
 
 
-#@click.command(name='symbols')
+# @click.command(name='symbols')
 def ies_symbols():
 
     store_path = pathlib.Path.home() / '.zipline/symbols'
-    
+
     if not store_path.exists():
         store_path.mkdir(parents=True)
 
     with httpx.Client() as client:
         response = client.get(
             url='https://sandbox.iexapis.com/v1/ref-data/symbols',
-            #url='https://cloud.iexapis.com/v1/ref-data/symbols',
+            # url='https://cloud.iexapis.com/v1/ref-data/symbols',
             params={'token': 'Tpk_c379f68921904f84966f5f0b275a278f'}
-            #params={'token': 'pk_bc531c74bd5a4a4d92c01cbe14115938'}
+            # params={'token': 'pk_bc531c74bd5a4a4d92c01cbe14115938'}
         )
 
     if response.status_code != httpx.codes.OK:
@@ -200,39 +193,42 @@ def ies_symbols():
         )
 
     symbols_ = [x for x in response.json() if x['type'] == 'cs']
-    
+
     with open(store_path / 'iex.csv', 'w') as f:
         csv_writer = csv.writer(f)
         csv_writer.writerows([(x['symbol'], x['name']) for x in symbols_])
 
 
-@click.command(name='symbols', help='Download the latest list of symbols available at Tiingo.')
+@click.command(
+    name='symbols', help='Download the latest list of symbols available at Tiingo.'
+)
 def tiingo_symbols():
-    
+
     store_path = pathlib.Path.home() / '.zipline/symbols'
-    
+
     if not store_path.exists():
         store_path.mkdir(parents=True)
-    
+
     client = tiingo.TiingoClient(
-        config={
-            'api_key': '6401083a570395b73daa90d694e19a07bf9920e7'
-        }
+        config={'api_key': '6401083a570395b73daa90d694e19a07bf9920e7'}
     )
 
     desirable_characters = string.ascii_letters + string.digits
-    
+
     symbols = [
-        x for x in client.list_stock_tickers()
+        x
+        for x in client.list_stock_tickers()
         if x['exchange'] in ('NYSE', 'NASDAQ', 'AMEX')
         and x['assetType'].lower() == 'stock'
         and x['startDate']
         and x['endDate']
         and all([y in desirable_characters for y in x['ticker']])
     ]
-    
+
     print(len(symbols))
-    
+
     with open(store_path / 'tiingo.csv', 'w') as f:
         csv_writer = csv.writer(f)
-        csv_writer.writerows([(x['ticker'], x['startDate'], x['endDate']) for x in symbols])
+        csv_writer.writerows(
+            [(x['ticker'], x['startDate'], x['endDate']) for x in symbols]
+        )

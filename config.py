@@ -1,4 +1,4 @@
-"""
+'''
 Copyright: Travis Cammack 2017
 Original Author: Travis Cammack
 Create Date: 5/6/2017
@@ -6,7 +6,7 @@ Contributors:
 ################################################################################
 
 This module holds some sweet action settings
-"""
+'''
 
 import json
 
@@ -26,10 +26,10 @@ TZ = None  # EST since NASDAQ and NYSE are in New York
 
 
 def load(file_name):
-    """Load the configuration file
+    '''Load the configuration file
 
     Load in the configuration variable values from a file
-    """
+    '''
 
     global TRADIER_API_DOMAIN
     global TRADIER_API_VERSION
@@ -63,10 +63,10 @@ def load(file_name):
 
 
 def validate_configuration():
-    """Validates config variables
+    '''Validates config variables
 
     TODO
-    """
+    '''
 
     #  tradier api domain
 

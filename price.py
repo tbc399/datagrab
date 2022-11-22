@@ -1,4 +1,4 @@
-"""
+'''
 Copyright: Travis Cammack 2017
 Original Author: Travis Cammack
 Create Date: 5/8/2017
@@ -7,7 +7,7 @@ Contributors:
 
 This module grabs standard historical prices and volumes for a
 given set of symbols.
-"""
+'''
 
 
 import requests
@@ -26,12 +26,12 @@ log = logging.getLogger(__name__)
 
 
 def __patch_data(start_ndx, end_ndx, data):
-    """TODO
+    '''TODO
 
     start_ndx is the index of the first null valued entry
     in data, and end_ndx is the index of the first valid
     entry in data after start_ndx.
-    """
+    '''
 
     assert start_ndx <= end_ndx
 
@@ -60,7 +60,7 @@ def __patch_data(start_ndx, end_ndx, data):
 
 
 def __fill_in_missing_data(dates_list, incomplete_data, symbol, sector):
-    """TODO"""
+    '''TODO'''
 
     ndx_1 = 0
     ndx_2 = 0
@@ -74,8 +74,7 @@ def __fill_in_missing_data(dates_list, incomplete_data, symbol, sector):
             ndx_2 += 1
         else:
             complete_data.append(
-                (symbol, dates_list[ndx_1], sector,
-                    None, None, None, None, None)
+                (symbol, dates_list[ndx_1], sector, None, None, None, None, None)
             )
         ndx_1 += 1
 
@@ -83,17 +82,16 @@ def __fill_in_missing_data(dates_list, incomplete_data, symbol, sector):
     #  the end of incomplete_data
     while ndx_1 < len_1:
         complete_data.append(
-            (symbol, dates_list[ndx_1], sector,
-                None, None, None, None, None)
+            (symbol, dates_list[ndx_1], sector, None, None, None, None, None)
         )
         ndx_1 += 1
 
     assert len(complete_data) == len(dates_list)
 
     #  now patch up the holes in the data
-    #start_patch_ndx = None
+    # start_patch_ndx = None
 
-    #for i in range(len(complete_data)):
+    # for i in range(len(complete_data)):
     #    if complete_data[i][3] is None:
     #        if start_patch_ndx is None:
     #            start_patch_ndx = i
@@ -105,7 +103,7 @@ def __fill_in_missing_data(dates_list, incomplete_data, symbol, sector):
     #            #  reset for the next patch
     #            start_patch_ndx = None
 
-    #if start_patch_ndx is not None:
+    # if start_patch_ndx is not None:
     #    if not __patch_data(
     #            start_patch_ndx,
     #            len(complete_data),
@@ -115,20 +113,20 @@ def __fill_in_missing_data(dates_list, incomplete_data, symbol, sector):
 
 
 def __format_prices(prices_json, symbol, sector_code, dates):
-    """Transform prices to tuples
+    '''Transform prices to tuples
 
     Take in a json object of prices for a given name and
     transform it into a list of tuples to be inserted into
     the db
-    """
+    '''
 
     if not prices_json['history'] or not prices_json['history']['day']:
-        print("WARNING: no history found for {}".format(symbol))
+        print('WARNING: no history found for {}'.format(symbol))
         return []
 
-    returned_data = prices_json["history"]["day"]
+    returned_data = prices_json['history']['day']
 
-    #  replace any "NaN" values with null
+    #  replace any 'NaN' values with null
     for dict_obj in returned_data:
         for key in dict_obj:
             if dict_obj[key] == 'NaN':
@@ -138,41 +136,35 @@ def __format_prices(prices_json, symbol, sector_code, dates):
     price_data = [
         (
             symbol,
-            datetime.strptime(day["date"], "%Y-%m-%d").date(),
+            datetime.strptime(day['date'], '%Y-%m-%d').date(),
             sector_code,
             round(day['open'] * 100) if day['open'] else None,
             round(day['high'] * 100) if day['high'] else None,
             round(day['low'] * 100) if day['low'] else None,
             round(day['close'] * 100) if day['close'] else None,
-            day['volume'] if day['volume'] else None
-        ) for day in returned_data
+            day['volume'] if day['volume'] else None,
+        )
+        for day in returned_data
     ]
 
     #  fill in any holes in the price data
-    complete_price_data = __fill_in_missing_data(
-        dates,
-        price_data,
-        symbol,
-        sector_code
-    )
+    complete_price_data = __fill_in_missing_data(dates, price_data, symbol, sector_code)
 
     if not complete_price_data:
         #  holes in the data are too big, so skip
-        print("WARNING: {} has too many missing data points. skipping").format(
-            symbol
-        )
+        print('WARNING: {} has too many missing data points. skipping').format(symbol)
         return []
 
     return complete_price_data
 
 
 def __get_missing_dates(db_conn, name, dates):
-    """Get date range
+    '''Get date range
 
     This guy gets the date range that we need to grab from Tradier.
     it compares the dates in th db with dates (the valid market dates)
     and gets the set difference of the two.
-    """
+    '''
 
     cursor = db_conn.cursor()
     cursor.execute('SELECT Date FROM stock_prices WHERE Name = %s', (name,))
@@ -186,12 +178,12 @@ def __get_missing_dates(db_conn, name, dates):
 
 
 def __remove_duplicates(prices, dates):
-    """Remove duplicate price records
+    '''Remove duplicate price records
 
     This function takes in prices which is a list of price record tuples
     and builds a new list of tuples from it that contains on those records
     whose dates/times are those listed in dates.
-    """
+    '''
 
     dates_set = set(dates)
 
@@ -199,7 +191,7 @@ def __remove_duplicates(prices, dates):
 
 
 def __download_yahoo_prices(session, symbol, dates):
-    """Download stock prices from Yahoo
+    '''Download stock prices from Yahoo
 
     Downloads stock price info with volume from Yahoo
 
@@ -207,17 +199,15 @@ def __download_yahoo_prices(session, symbol, dates):
     :param symbol: a tuple of the stock name and sector respectively
     :param valid_dates: a list of the range of dates of interest
     :return: a list of tuples of the prices
-    """
+    '''
 
     print('Fetching prices from Yahoo')
     print(dates[0], dates[-1])
 
     name, sector = symbol
 
-    url = (
-        'https://query1.finance.yahoo.com/v8/finance/chart/{symbol}'.format(
-            symbol=name
-        )
+    url = 'https://query1.finance.yahoo.com/v8/finance/chart/{symbol}'.format(
+        symbol=name
     )
     query = {
         'formatted': True,
@@ -226,7 +216,7 @@ def __download_yahoo_prices(session, symbol, dates):
         'interval': '1d',
         'events': 'div|split',
         'period1': str(int(time.mktime(dates[0].timetuple()))),
-        'period2': str(int(time.mktime(dates[-1].timetuple())))
+        'period2': str(int(time.mktime(dates[-1].timetuple()))),
     }
 
     resp = session.get(url, params=query).json()
@@ -248,20 +238,20 @@ def __download_yahoo_prices(session, symbol, dates):
         return
 
     lows = [
-        round(x * 100) if x is not None else None for x in
-        resp['chart']['result'][0]['indicators']['quote'][0]['low']
+        round(x * 100) if x is not None else None
+        for x in resp['chart']['result'][0]['indicators']['quote'][0]['low']
     ]
     highs = [
-        round(x * 100) if x is not None else None for x in
-        resp['chart']['result'][0]['indicators']['quote'][0]['high']
+        round(x * 100) if x is not None else None
+        for x in resp['chart']['result'][0]['indicators']['quote'][0]['high']
     ]
     closes = [
-        round(x * 100) if x is not None else None for x in
-        resp['chart']['result'][0]['indicators']['quote'][0]['close']
+        round(x * 100) if x is not None else None
+        for x in resp['chart']['result'][0]['indicators']['quote'][0]['close']
     ]
     opens = [
-        round(x * 100) if x is not None else None for x in
-        resp['chart']['result'][0]['indicators']['quote'][0]['open']
+        round(x * 100) if x is not None else None
+        for x in resp['chart']['result'][0]['indicators']['quote'][0]['open']
     ]
     vols = resp['chart']['result'][0]['indicators']['quote'][0]['volume']
 
@@ -275,14 +265,14 @@ def __download_yahoo_prices(session, symbol, dates):
 
 
 def __prices_complete(price_tuples):
-    """Determine if prices complete
+    '''Determine if prices complete
 
     Runs through a list of pricing tuples and return True if there are
-    no "holes" in the data, i.e. no null values
+    no 'holes' in the data, i.e. no null values
 
     :param price_tuples: a list of price tuples
     :return: True if no values in the tuples are None
-    """
+    '''
 
     if not price_tuples:
         return False
@@ -291,10 +281,10 @@ def __prices_complete(price_tuples):
 
 
 def __download_prices(session, db_conn, symbol, valid_dates):
-    """Download a symbol's prces
+    '''Download a symbol's prces
 
     TODO
-    """
+    '''
 
     name, sector = symbol
 
@@ -303,18 +293,13 @@ def __download_prices(session, db_conn, symbol, valid_dates):
     if not dates:
         return
 
-    url = "https://{host}/{version}/markets/history".format(
-        host=config.TRADIER_API_DOMAIN,
-        version=config.TRADIER_API_VERSION
+    url = 'https://{host}/{version}/markets/history'.format(
+        host=config.TRADIER_API_DOMAIN, version=config.TRADIER_API_VERSION
     )
-    query = {
-        'symbol': name,
-        'start': str(dates[0]),
-        'end': str(dates[-1])
-    }
+    query = {'symbol': name, 'start': str(dates[0]), 'end': str(dates[-1])}
     headers = {
-        "Authorization": "Bearer {}".format(config.TRADIER_API_TOKEN),
-        "Accept": "application/json"
+        'Authorization': 'Bearer {}'.format(config.TRADIER_API_TOKEN),
+        'Accept': 'application/json',
     }
 
     resp = session.get(url, params=query, headers=headers)
@@ -349,10 +334,10 @@ def __download_prices(session, db_conn, symbol, valid_dates):
 
 
 async def __download_prices_async(session, db_conn, throttle, symbol, valid_dates):
-    """Download a symbol's prces
+    '''Download a symbol's prces
 
     TODO
-    """
+    '''
 
     name, sector = symbol
 
@@ -361,18 +346,13 @@ async def __download_prices_async(session, db_conn, throttle, symbol, valid_date
     if not dates:
         return
 
-    url = "https://{host}/{version}/markets/history".format(
-        host=config.TRADIER_API_DOMAIN,
-        version=config.TRADIER_API_VERSION
+    url = 'https://{host}/{version}/markets/history'.format(
+        host=config.TRADIER_API_DOMAIN, version=config.TRADIER_API_VERSION
     )
-    query = {
-        'symbol': name,
-        'start': str(dates[0]),
-        'end': str(dates[-1])
-    }
+    query = {'symbol': name, 'start': str(dates[0]), 'end': str(dates[-1])}
     headers = {
-        "Authorization": "Bearer {}".format(config.TRADIER_API_TOKEN),
-        "Accept": "application/json"
+        'Authorization': 'Bearer {}'.format(config.TRADIER_API_TOKEN),
+        'Accept': 'application/json',
     }
 
     prices = None
@@ -380,8 +360,7 @@ async def __download_prices_async(session, db_conn, throttle, symbol, valid_date
         try:
             async with throttle:
                 print('fetching {}'.format(name))
-                async with session.get(
-                        url, params=query, headers=headers) as resp:
+                async with session.get(url, params=query, headers=headers) as resp:
                     prices = await resp.text()
                     if 'Quota Violation' in prices:
                         print('Quota violation...')
@@ -407,35 +386,39 @@ async def __download_prices_async(session, db_conn, throttle, symbol, valid_date
         unique_price_tuples = __remove_duplicates(price_tuples, dates)
 
         cursor = db_conn.cursor()
-        query = 'INSERT INTO stock_prices' \
-                '(name, date, sector_code, open, high, low, close, volume)' \
-                '  VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'
+        query = (
+            'INSERT INTO stock_prices'
+            '(name, date, sector_code, open, high, low, close, volume)'
+            '  VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'
+        )
         extras.execute_batch(cursor, query, unique_price_tuples)
         db_conn.commit()
         cursor.close()
 
 
 async def __run_helper(db_conn, loop, symbols, dates):
-    """Dole out price requests"""
+    '''Dole out price requests'''
 
     #  throttle the requests since Tradier has a rate limit
     throttle = Throttler(rate_limit=1)
 
     async with aiohttp.ClientSession(loop=loop) as session:
-        tasks = [__download_prices_async(
-            session, db_conn, throttle, name, dates) for name in symbols]
+        tasks = [
+            __download_prices_async(session, db_conn, throttle, name, dates)
+            for name in symbols
+        ]
         await asyncio.gather(*tasks)
 
 
 def run(db_conn, symbols, dates):
-    """Entry point for price
+    '''Entry point for price
 
     TODO
-    """
+    '''
 
-    #loop = asyncio.get_event_loop()
-    #loop.run_until_complete(__run_helper(db_conn, loop, symbols, dates))
-    #loop.close()
+    # loop = asyncio.get_event_loop()
+    # loop.run_until_complete(__run_helper(db_conn, loop, symbols, dates))
+    # loop.close()
 
     with requests.Session() as session:
         for symbol in symbols:

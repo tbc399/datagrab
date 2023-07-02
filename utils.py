@@ -11,6 +11,8 @@ other modules
 
 import os
 import json
+from functools import wraps
+import asyncio
 import config
 import requests
 import pytz
@@ -202,3 +204,11 @@ def normalize(value, minimum, maximum):
     '''
 
     return (value - minimum) / (maximum - minimum)
+
+
+def asink(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        return asyncio.run(f(*args, **kwargs))
+
+    return wrapper
